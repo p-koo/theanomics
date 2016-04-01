@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import scipy.io
 import os
+import sys
 
 from keras.models import Sequential
 from keras.layers.convolutional import Convolution1D, MaxPooling1D
@@ -14,50 +15,25 @@ from keras.layers.advanced_activations import PReLU
 from keras.layers.normalization import BatchNormalization
 from keras.constraints import maxnorm
 
+sys.path.append('/home/peter/Code/GenomeMotifs/utils')
+from data_utils import load_DeepSea
+from train_utils import batch_generator
+from file_utils import make_directory
 
-filename = 'DeepSea'
-outdir = os.path.join('data',filename)
-if not os.path.isdir(outdir):
-    os.mkdir(outdir)
-    print "making directory: " + outdir
+np.random.seed(247) # for reproducibility
 
-def data_subset(y, index_range):
-    data_index = []
-    for i in index_range:
-        index = np.where(y[i] == 1)
-        data_index.append(index[0])
-    unique_index = np.unique(data_index)
-    num_data = y.shape[0]
-    non_index = list(set(xrange(num_data)) - set(unique_index))
-    return unique_index+non_index
 
+foldername = 'DeepSea'
+path = '/home/peter/Code/GenomeMotifs/Results/'
+outdir = make_directory(foldername, path)
 
 # load data and munge 
-num_include = 2000000
-class_range = xrange(0,125)
-
-print "loading training data"
-trainmat = h5py.File('train.mat')
-y_train = np.array(trainmat['traindata']).T
-#index = data_subset(y_train, index_range)
-#y_train = y_train[index[0:num_include], class_range]
-y_train = y_train[0:num_include, class_range]
-X_train = np.transpose(np.array(trainmat['trainxdata']), axes=(2,0,1))
-X_train = X_train[0:num_include, :, :]
-
-print "loading validation data"  
-validmat = scipy.io.loadmat('valid.mat')
-X_valid = np.transpose(validmat['validxdata'],axes=(0,2,1)) 
-y_valid = validmat['validdata']
-y_valid = y_valid[:, class_range]
-
-print "loading test data"
-testmat = scipy.io.loadmat('test.mat')
-X_test = np.transpose(testmat['testxdata'],axes=(0,2,1))
-y_test = testmat['testdata']
-y_test = y_test[:, class_range]
-
-
+num_labels = 100
+num_include = 1000000
+class_range = range(num_labels)
+data_path = "/home/peter/Data/DeepSea"
+train, valid, test = load_DeepSea(data_path, num_include, class_range)
+num_data, dim, sequence_length = train[0].shape
 
 
 
@@ -86,7 +62,7 @@ dropout_fc = 0.3                   # dropout rate
 weight_norm = 7
 
 # output layer parameters
-num_labels = y_train.shape[1]   # number of labels (output units)
+num_labels = train[1].shape[1]   # number of labels (output units)
 output_activation = 'sigmoid'   # activation for output unit (prediction)
 
 # optimization parameters
@@ -95,7 +71,7 @@ batch_size = 128                # mini-batch size
 nb_epoch = 100                  # number of epochs to train
 
 # figure out fan-in for each layer 
-num_data, seq_length, dim = X_train.shape
+num_data, dim, seq_length = train[0].shape
 input_length = [seq_length, seq_length/pool_length[0], seq_length/pool_length[0]/pool_length[1], seq_length/np.sum(pool_length[0])]
 input_length = np.round(input_length).astype(int)
 
@@ -187,14 +163,14 @@ earlystopper = EarlyStopping(monitor='val_loss',
                              verbose=1)
 
 # train model
-model.fit(X_train, y_train, batch_size=batch_size, 
+model.fit(train[0], train[1], batch_size=batch_size, 
                             nb_epoch=nb_epoch, 
                             shuffle=True, 
                             show_accuracy=True, 
-                            validation_data=(X_valid, y_valid), 
+                            validation_data=(valid[0], valid[1]), 
                             callbacks=[checkpointer, earlystopper])
 
 # run trained model on test set
-results = model.evaluate(X_test, y_test, show_accuracy=True)
+results = model.evaluate(test[0], test[1], show_accuracy=True)
 
 print results
