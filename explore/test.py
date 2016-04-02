@@ -13,9 +13,10 @@ for index in range(1000):
     remaining_time = (time.time()-start_time)*(1000-index-1)/(index+1)
     percent = (index+1.)/1000
     progress = '-'*int(round(percent*bar_length))
-    spaces = ' '*int(round((1000-index-1)/1000*bar_length))
-    sys.stdout.write("[%s] %.1f%% -- est.time=%d s -- loss=%.4f -- accuracy=%.3f \n" \
+    spaces = ' '*int(bar_length-round(percent*bar_length))
+    sys.stdout.write("\r[%s] %.1f%% -- est.time=%d s -- loss=%.4f -- accuracy=%.3f" \
     %(progress+spaces, percent*100, remaining_time, np.random.uniform(), np.random.uniform()))
     sys.stdout.flush()
+sys.stdout.write("\n")
 
 

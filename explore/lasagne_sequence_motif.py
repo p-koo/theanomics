@@ -87,7 +87,7 @@ loss = T.mean(binary_crossentropy(prediction, target_var))
 # calculate gradient with clipping
 weight_norm = 10
 params = get_all_params(network, trainable=True)
-updates = adagrad(loss, params)
+updates = rmsprop(loss, params)
 
 # test loss
 test_prediction = get_output(network, deterministic=True)
@@ -134,14 +134,14 @@ for epoch in range(num_epochs):
         train_accuracy += accuracy
         
         # progress bar
-        remaining_time = (time.time()-start_time)*(num_epochs-index-1)/(index+1)
-        percent = (index+1.)/num_epochs
-        progress = '-'*int(round(percent*bar_length))
-        spaces = ' '*int(round((num_epochs-index-1)/num_epochs*bar_length))
-        sys.stdout.write("[%s] %.1f%% -- est.time=%d s -- loss=%.4f -- accuracy=%.1f%% \n" \
-        %(progress+spaces, percent*100, remaining_time, train_loss/(index+1), train_accuracy/(index+1)*100))
+        remaining_time = (time.time()-start_time)*(num_train_batches-index-1)/(index+1)
+        percent = (index+1.)/num_train_batches
+        progress = '#'*int(round(percent*bar_length))
+        spaces = ' '*int(bar_length-round(percent*bar_length))
+        sys.stdout.write("\rEpoch %d [%s] %.1f%% -- est.time=%ds -- loss=%.3f -- accuracy=%.2f%%" \
+        %(epoch+1, progress+spaces, percent*100, remaining_time, train_loss/(index+1), train_accuracy/(index+1)*100))
         sys.stdout.flush()
-
+    sys.stdout.write("\n")
 
     train_loss /= num_train_batches
     train_accuracy /= num_train_batches
