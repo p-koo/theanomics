@@ -132,16 +132,17 @@ for epoch in range(num_epochs):
         loss, accuracy = train_fun(X, y)
         train_loss += loss
         train_accuracy += accuracy
-
+        
         # progress bar
-        remaining_time = (time.time()-start_time)*(num_train_batches-index-1)/(index+1)
+        remaining_time = (time.time()-start_time)*(num_epochs-index-1)/(index+1)
         percent = (index+1.)/num_epochs
         progress = '-'*int(round(percent*bar_length))
-        spaces = ' '*(bar_length - len([progress]))
-        sys.stdout.write("\r[{1}] {2}% -- est.time={3}s -- loss={4} -- accuracy={5}".format(
-            progress+spaces, int(round(percent*100)), remaining_time, train_loss/(index+1), train_accuracy/(index+1)))
+        spaces = ' '*int(round((num_epochs-index-1)/num_epochs*bar_length))
+        sys.stdout.write("[%s] %.1f%% -- est.time=%d s -- loss=%.4f -- accuracy=%.1f%% \n" \
+        %(progress+spaces, percent*100, remaining_time, train_loss/(index+1), train_accuracy/(index+1)*100))
         sys.stdout.flush()
-        
+
+
     train_loss /= num_train_batches
     train_accuracy /= num_train_batches
 
