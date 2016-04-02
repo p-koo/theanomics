@@ -117,7 +117,10 @@ train_batches = batch_generator(train[0], train[1], batch_size)
 valid_batches = batch_generator(valid[0], valid[1], batch_size)
 
 
+
+
 print("Starting training...")
+bar_length = 20
 valid_memory = []
 performance = []
 for epoch in range(num_epochs):
@@ -130,19 +133,22 @@ for epoch in range(num_epochs):
         train_loss += loss
         train_accuracy += accuracy
 
+        # progress bar
         remaining_time = (time.time()-start_time)*(num_train_batches-index-1)/(index+1)
-        print("Estimated remaining time: {:.3f}s (batch {} of {}) ".format(
-            remaining_time, index+1, num_train_batches ))
-        print("  training loss:\t\t{:.6f}".format(train_loss/(index+1)))
-        print("  training accuracy:\t\t{:.2f} %".format(train_accuracy/(index+1)*100))
-
+        percent = (index+1.)/num_epochs
+        progress = '-'*int(round(percent*bar_length))
+        spaces = ' '*(bar_length - len([progress]))
+        sys.stdout.write("\r[{1}] {2}% -- est.time={3}s -- loss={4} -- accuracy={5}".format(
+            progress+spaces, int(round(percent*100)), remaining_time, train_loss/(index+1), train_accuracy/(index+1)))
+        sys.stdout.flush()
+        
     train_loss /= num_train_batches
     train_accuracy /= num_train_batches
 
     valid_loss = 0
     valid_accuracy = 0
     for _ in range(num_valid_batches):
-        X, y = next(val_batches)
+        X, y = next(valid_batches)
         loss, accuracy = test_fun(X, y)
         valid_loss += loss
         valid_accuracy += accuracy
