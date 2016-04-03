@@ -29,7 +29,7 @@ outdir = make_directory(foldername, path)
 
 # load data and munge 
 num_labels = 100
-num_include = 1000000
+num_include = 500000
 class_range = range(num_labels)
 data_path = "/home/peter/Data/DeepSea"
 train, valid, test = load_DeepSea(data_path, num_include, class_range)
@@ -59,15 +59,16 @@ W_l2_fc = 0#.0000005                  # l2 weight decay dense layer
 b_l1_fc = 0                  # l1 weight decay dense layer
 b_l2_fc = 0                  # l2 weight decay dense layer
 dropout_fc = 0.3                   # dropout rate
-weight_norm = 7
+weight_norm = 10
 
 # output layer parameters
 num_labels = train[1].shape[1]   # number of labels (output units)
 output_activation = 'sigmoid'   # activation for output unit (prediction)
 
 # optimization parameters
+optimizer = 'rmsprop'           # optimizer (rmsprop, adam, sgd, adagrad)
 loss = 'binary_crossentropy'    # loss function to minimize (mse, binary_crossentropy,)
-batch_size = 128                # mini-batch size 
+batch_size = 1000                # mini-batch size 
 nb_epoch = 100                  # number of epochs to train
 
 # figure out fan-in for each layer 
@@ -87,9 +88,11 @@ model.add(Convolution1D(input_dim=dim,
                         filter_length=filter_length[0],
                         init='glorot_uniform', 
                         border_mode="same",
-                        subsample_length=1,
-                        W_constraint = maxnorm(weight_norm), 
-                        W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)))            
+                        subsample_length=1
+                        #activation=conv_activation
+#                        W_constraint = maxnorm(weight_norm), 
+#                        W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
+                        ))            
 model.add(BatchNormalization())
 model.add(PReLU())
 model.add(MaxPooling1D(pool_length=pool_length[0], stride=pool_length[0]))
@@ -102,13 +105,14 @@ model.add(Convolution1D(input_dim=conv_filters[0],
                         filter_length=filter_length[1],
                         init='glorot_uniform', 
                         border_mode="same",
-                        subsample_length=1,
-                        W_constraint = maxnorm(weight_norm), 
-                        W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)))                    
+                        subsample_length=1
+                        #activation=conv_activation
+                        #W_constraint = maxnorm(weight_norm), 
+                        #W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
+                        ))                    
 model.add(BatchNormalization())
 model.add(PReLU())
 model.add(MaxPooling1D(pool_length=pool_length[1], stride=pool_length[1]))
-# model.add(Dropout(dropout_conv))
 
 # convolutional layer 3
 model.add(Convolution1D(input_dim=conv_filters[1],
@@ -117,12 +121,15 @@ model.add(Convolution1D(input_dim=conv_filters[1],
                         filter_length=filter_length[2],
                         init='glorot_uniform', 
                         border_mode="same",
-                        subsample_length=1,
-                        W_constraint = maxnorm(weight_norm), 
-                        W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)))                         
+                        subsample_length=1
+                        # activation=conv_activation
+                        #W_constraint = maxnorm(weight_norm), 
+                        #W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
+                        ))                         
 model.add(BatchNormalization())
 model.add(PReLU())
 model.add(MaxPooling1D(pool_length=pool_length[2], stride=pool_length[2]))
+model.add(Dropout(dropout_conv))
 
 
 # flatten feature maps for fully connected layer
@@ -131,26 +138,28 @@ model.add(Flatten())
 # fully connected layer
 model.add(Dense(input_dim=input_length[2]*conv_filters[2], 
                 output_dim=fully_connected[0], 
-                init='glorot_uniform', 
-                W_constraint = maxnorm(weight_norm), 
-                W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc))) 
+                init='glorot_uniform'
+                #activation=fc_activation
+                #W_constraint = maxnorm(weight_norm), 
+                #W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc)
+                )) 
 model.add(BatchNormalization())
 model.add(PReLU())
-# model.add(Dropout(dropout_conv))
+model.add(Dropout(dropout_fc))
 
 # sigmoid output layer
 model.add(Dense(input_dim=fully_connected[0], 
                 output_dim=num_labels,
                 init='glorot_uniform', 
-                W_constraint = maxnorm(weight_norm), 
-                activation=output_activation, 
-                W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc))) 
-# model.add(Dropout(dropout_fc))
+                #W_constraint = maxnorm(weight_norm), 
+                activation=output_activation
+                #W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc)
+                )) 
 
 # loss function and optimization method
+# model.compile(loss=loss, optimizer=SGD(lr=.002, momentum=0.98, nersterov=True))
 model.compile(loss=loss, 
-              optimizer=SGD(lr=.002, momentum=0.98, nersterov=True))
-
+              optimizer=optimizer)
 # save models during training
 checkpointer = ModelCheckpoint(filepath=os.path.join(outdir,"bestmodel.hdf5"), # 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'), 
                                verbose=1, 
@@ -174,3 +183,4 @@ model.fit(train[0], train[1], batch_size=batch_size,
 results = model.evaluate(test[0], test[1], show_accuracy=True)
 
 print results
+
