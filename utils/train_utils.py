@@ -1,9 +1,11 @@
 #!/bin/python
 
-import numpy as np
-import time
 import sys
-
+import os
+import time
+import numpy as np
+import theano.tensor as T
+import theano
 
 def batch_generator(X, y, N):
     while True:
@@ -57,3 +59,20 @@ def early_stopping(valid_memory, patience):
         if patience - (current_epoch - min_epoch) < 0:
             status = False
     return status
+
+
+def  prediction_accuracy(prediction, target_var, objective):
+
+    if objective == "categorical":
+        accuracy = T.mean(T.eq(T.argmax(prediction, axis=1), target_var),
+                                                  dtype=theano.config.floatX)
+    elif objective == "binary":
+        accuracy = T.mean(T.eq(prediction, target_var))
+    elif objective == "meansquare":
+        print "work in progress"
+    return accuracy
+
+
+
+
+

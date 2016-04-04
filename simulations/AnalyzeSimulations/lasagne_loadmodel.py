@@ -8,7 +8,7 @@ import theano.tensor as T
 sys.path.append('/home/peter/Code/GenomeMotifs/utils')
 from data_utils import load_MotifSimulation
 from train_utils import batch_generator, early_stopping, epoch_train, print_progress, prediction_accuracy
-from file_utils import make_directory, save_model, load_model, save_train_performance
+from file_utils import make_directory, save_model, load_model
 from model_utils import build_cost, calculate_gradient, optimizer, build_model
 from lasagne.layers import get_all_params
 sys.path.append('/home/peter/Code/GenomeMotifs/models')
@@ -58,55 +58,13 @@ test_fun = theano.function([input_var, target_var], [test_cost, test_accuracy])
 batch_size = 500
 num_epochs = 100
 patience = 0
+filepath = os.path.join('/home/peter/Code/GenomeMotifs/Results','test.pickle')
+network = load_model(network, filepath)
 
 
-print("Starting training...")
 
-num_train_batches = len(train[0]) // batch_size
-num_valid_batches = len(valid[0]) // batch_size
-train_batches = batch_generator(train[0], train[1], batch_size)
-valid_batches = batch_generator(valid[0], valid[1], batch_size)
-
-
-save = 'all' # final
-filename = 'test'
-dirpath = '/home/peter/Code/GenomeMotifs/Results'
-train_loss = []
-train_acc = []
-valid_loss = []
-valid_acc = []
-for epoch in range(num_epochs):
-    
-    train_cost, train_accuracy = epoch_train(train_fun, train_batches, num_train_batches, 1)
-
-    valid_cost, valid_accuracy = epoch_train(test_fun, valid_batches, num_train_batches)
-    print_progress(valid_cost, valid_accuracy, "cross-validation", epoch, num_epochs)    
-
-    # store training performance info
-    train_loss.append(train_cost)
-    train_acc.append(train_accuracy)
-    valid_loss.append(valid_cost)
-    valid_acc.append(valid_accuracy)
-
-    # save model
-    if save == 'all':
-        filepath = os.path.join(dirpath, filename+"_"+str(epoch)+".pickle")
-        save_model(network, filepath)
-
-    # check for early stopping
-    status = early_stopping(valid_loss, patience)
-    if not status:
-        print "Patience ran out... Early stopping."
-        break
-            
-# get test loss and accuracy
 num_test_batches = len(test[0]) // batch_size
 test_batches = batch_generator(test[0], test[1], batch_size)
 test_cost, test_accuracy = epoch_train(test_fun, test_batches, num_test_batches)
 print_progress(test_cost, test_accuracy, "test")    
-
-# save performance
-filepath =  os.path.join(dirpath, filename+"_performance.pickle")
-performance = [train_loss, train_acc, valid_loss, valid_acc, test_cost, test_accuracy]
-save_train_performance(filepath, performance)
 

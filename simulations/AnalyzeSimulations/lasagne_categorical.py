@@ -24,6 +24,10 @@ from data_utils import load_MotifSimulation
 from train_utils import batch_generator, early_stopping, epoch_train, print_progress
 from file_utils import make_directory
 
+sys.path.append('/home/peter/Code/GenomeMotifs/models')
+from models import genome_motif_simple_model
+
+
 np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
