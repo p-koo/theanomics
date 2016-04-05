@@ -59,7 +59,6 @@ def load_DeepSea(path, num_include=4400000, class_range=918):
 
 	return train, valid, test 
 
-
 def load_MotifSimulation(filename, directory, categorical=0):
 	# setup paths for file handling
 	filepath = os.path.join(directory,filename)
@@ -96,4 +95,47 @@ def load_MotifSimulation(filename, directory, categorical=0):
 	test = (X_test, y_test)
 
 	return train, valid, test
+
+"""
+
+class Data():
+	def __init__(X_train, y_train, X_valid, y_valid, X_test, y_test):
+		self.X_train = X_train
+		self.y_train = y_train
+		self.X_valid = X_valid
+		self.y_valid = y_valid
+		self.X_test = X_test
+		self.y_test = y_test
+		self.shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
+
+		y_train.shape[1]
+		self.num_labels = max(y_train)+1
+
+
+	def get_train():
+		return self.X_train, self.y_train
+
+	def get_test():
+		return self.X_test, self.y_test
+
+	def get_valid():
+		return self.X_valid, self.y_valid
+
+	def get_shape():
+		return self.shape
+
+	def get_num_labels():
+		return self.num_labels
+		
+	def get_minibatch():
+
+
+	def batch_generator(X, y, N):
+	    while True:
+	        idx = np.random.choice(len(y), N)
+	        yield X[idx].astype('float32'), y[idx].astype('int32')
+
+
+"""
+
 

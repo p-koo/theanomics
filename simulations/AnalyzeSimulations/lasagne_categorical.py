@@ -18,17 +18,14 @@ from lasagne.objectives import binary_crossentropy, categorical_crossentropy
 from lasagne.regularization import regularize_layer_params_weighted, l2, l1
 from lasagne.regularization import regularize_layer_params
 from lasagne.updates import nesterov_momentum, adagrad, rmsprop, total_norm_constraint
+np.random.seed(247) # for reproducibility
 
 sys.path.append('/home/peter/Code/GenomeMotifs/utils')
 from data_utils import load_MotifSimulation
 from train_utils import batch_generator, early_stopping, epoch_train, print_progress
 from file_utils import make_directory
 
-sys.path.append('/home/peter/Code/GenomeMotifs/models')
-from models import genome_motif_simple_model
 
-
-np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
 filename = 'N=100000_S=200_M=10_G=20_data.pickle'

@@ -8,12 +8,9 @@ from lasagne.nonlinearities import sigmoid, rectify, softmax
 from lasagne.init import GlorotUniform, Constant
 from lasagne.objectives import binary_crossentropy, categorical_crossentropy
 from lasagne.updates import nesterov_momentum, adagrad, rmsprop, total_norm_constraint, sgd, adam
+from lasagne.regularization import l1, l2 
 
-
-def genome_motif_simple_model(X, y):
-
-	shape = (None, X.shape[1], X.shape[2], X.shape[3])
-	num_labels = np.max(y)+1
+def simple_genome_motif_model(shape, num_labels):
 
 	input_var = T.tensor4('inputs')
 	target_var = T.ivector('targets')
@@ -35,7 +32,7 @@ def genome_motif_simple_model(X, y):
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
 	          'b': None,
-	          #'dropout': .5,
+	          'dropout': .2,
 	          'norm': 'batch', 
 	          'activation': 'prelu',
 	          'pool_size': (4, 1)}
@@ -55,4 +52,17 @@ def genome_motif_simple_model(X, y):
 	          'activation': softmax}
 
 	layers = [layer1, layer2, layer3, layer4, layer5]
-	return layers, input_var, target_var
+
+	# optimization parameters
+	optimization = {"objective": "categorical",
+                "optimizer": "nesterov_momentum", 
+                "learning_rate": 0.1,
+                "weight_norm": 5,
+                "l1": 1e-7,
+                "l2": 1e-8, 
+                "momentum": 0.9
+                }
+
+
+	return layers, input_var, target_var, optimization
+
