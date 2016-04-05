@@ -1,19 +1,16 @@
+
 import sys
 import os
 import numpy as np
 import theano
 import theano.tensor as T
-
-sys.path.append('/home/peter/Code/GenomeMotifs/utils')
+from six.moves import cPickle
+import matplotlib.pyplot as plt
+sys.path.append('/home/peter/Code/GenomeMotifs/src')
+from neuralnetwork import NeuralNetworkModel
 from data_utils import load_MotifSimulation
-from train_utils import batch_generator, early_stopping, epoch_train, print_progress
-from file_utils import make_directory, save_model, set_model_parameters, save_train_performance
-from model_utils import load_model, prediction_accuracy
-from lasagne.layers import get_all_params
-sys.path.append('/home/peter/Code/GenomeMotifs/models')
-from supervised_models import genome_motif_simple_model
-
-np.random.seed(247) # for reproducibility
+from utils import make_directory
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, accuracy_score
 
 #------------------------------------------------------------------------------
 # load data
@@ -21,64 +18,55 @@ np.random.seed(247) # for reproducibility
 filename = 'N=100000_S=200_M=10_G=20_data.pickle'
 dirpath = '/home/peter/Data/SequenceMotif'
 train, valid, test = load_MotifSimulation(filename, dirpath, categorical=1)
-"""
-batch_size = 500
-objective = "categorical"
-layers, input_var, target_var = genome_motif_simple_model(train[0], train[1])
-network = build_model(layers, input_var)
-test_cost, test_prediction = build_cost(network, target_var, objective, deterministic=True)
-test_accuracy = prediction_accuracy(test_prediction, target_var, objective)
-test_fun = theano.function([input_var, target_var], [test_cost, test_accuracy])
-
-epoch = 3
-savename = "mytest"
-filepath = os.path.join(dirpath, "Results", savename+"_"+str(epoch)+".pickle")
-network = set_model_parameters(network, filepath)
-test_cost, test_accuracy = test_fun(test[0].astype(np.float32), test[1].astype(np.int32))
-test_accuracy
-test_cost
-
-"""
-
-optimization = {"objective": "categorical",
-                "optimizer": "sgd", 
-                "learning_rate": 0.1,
-                "weight_norm": 10}
-savename = "mytest"
-
-accuracy = []
-cost = []
-for epoch in range(4):
-	filepath = os.path.join(dirpath, "Results", savename+"_"+str(epoch)+".pickle")
-
-	layers, input_var, target_var = genome_motif_simple_model(train[0], train[1])
-	network, train_fun, test_fun = load_model(layers, input_var, target_var, optimization)
-	network = set_model_parameters(network, filepath)
-	
-	test_cost, test_accuracy = test_fun(test[0].astype(np.float32), test[1].astype(np.int32))
-	print str(epoch)
-	print str(float(test_accuracy))
-	print str(float(test_cost))
-
 
 #-------------------------------------------------------------------------------------
-# build model
+# load model
 
-"""
+model_name="simple_genome_motif_model"
 
-cost, prediction = build_cost(network, target_var, objective=optimization["objective"])
+shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
+num_labels = max(train[1])+1
 
-params = get_all_params(network, trainable=True)    
-grad = calculate_gradient(network, cost, params, weight_norm=10)
-updates = optimizer(grad, params, optimization)
+save = 'all' # final
+savename = 'sim1'
+savepath = os.path.join(dirpath,'Results',savename)
 
-train_fun = theano.function([input_var, target_var], [cost, test_accuracy], updates=updates)
+# load best model
+filepath = savepath + "_best.pickle"
+f = open(filepath, 'rb')
+all_param_values = cPickle.load(f)
+f.close()
+nnmodel = NeuralNetworkModel(model_name, shape=shape, num_labels=num_labels);
+nnmodel.set_model_parameters(all_param_values)
+cost, prediction = nnmodel.test_results(test)
 
-#-------------------------------------------------------------------------------------
-# train model
+# convert predictions to matrix format
+y = np.zeros((test[1].shape[0],nnmodel.num_labels))
+for i in range(test[1].shape[0]):
+	y[i,test[1][i]] = 1
 
+# get accuracy, roc, pr metrics
+roc = []
+pr = []
+accuracy = np.zeros((num_labels))
+auc_roc = np.zeros((num_labels))
+auc_pr = np.zeros((num_labels))
+for i in range(num_labels):
+	# accuracy score
+	score = accuracy_score(y[:,i], np.round(prediction[:,i]))
+	accuracy[i] = score
 
+	# receiver-operator characteristic curve
+	fpr, tpr, thresholds = roc_curve(y[:,i], prediction[:,i])
+	auc_roc[i] = auc(fpr, tpr)
+	roc.append((fpr, tpr))
 
-filename="simulation"
-savepath = os.path.join(dirpath, 'Results', filename+"_"+str(epoch)+".pickle")
-"""
+	# precision recall curve
+	precision, recall, thresholds = precision_recall_curve(y[:,i], prediction[:,i])
+	auc_pr[i] = auc(recall, precision)
+	pr.append((precision, recall))
+
+print str(np.mean(accuracy))
+print str(np.mean(auc_roc))
+print str(np.mean(auc_pr))
+

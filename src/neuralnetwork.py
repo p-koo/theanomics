@@ -51,7 +51,6 @@ class NeuralNetworkModel:
     def get_model_name(self):
         return self.model_name
 
-
     def get_network(self):
         return self.network
 
@@ -92,6 +91,18 @@ class NeuralNetworkModel:
         return test_cost, test_accuracy
 
 
+    def prediction_accuracy(self, prediction, y):
+
+        objective = self.optimization["objective"]
+        if objective == "categorical":
+            accuracy = np.mean((np.argmax(prediction, axis=1) == y).astype(np.float))
+        elif objective == "binary":
+            accuracy = T.mean(T.eq(prediction, y))
+        elif objective == "meansquare":
+            print "work in progress"
+        return accuracy
+
+
     def epoch_train(self,  mini_batches, num_batches):        
         
         # set timer for epoch run
@@ -102,8 +113,10 @@ class NeuralNetworkModel:
         epoch_accuracy = 0
         for index in range(num_batches):
             X, y = next(mini_batches)
-            cost, accuracy = self.train_fun(X, y)
+            cost, prediction = self.train_fun(X, y)
             epoch_cost += cost
+
+            accuracy = self.prediction_accuracy(prediction, y)
             epoch_accuracy += accuracy
             
             # plot progress bar
@@ -130,9 +143,10 @@ class NeuralNetworkModel:
 
             # training set
             train_cost, train_accuracy = self.epoch_train( train_batches, num_train_batches)
-          
+
             # validation set
-            valid_cost, valid_accuracy = self.test_results(valid)
+            valid_cost, valid_prediction = self.test_results(valid)
+            valid_accuracy = self.prediction_accuracy(valid_prediction, valid[1])
 
             # store training performance info
             self.monitor.append_values(train_cost, train_accuracy, 'train')
@@ -152,7 +166,11 @@ class NeuralNetworkModel:
                     
         # get test cost and accuracy
         self.set_model_parameters(self.best_parameters)
-        test_cost, test_accuracy = self.test_results(test)
+        savepath = filepath + "_best.pickle"
+        self.save_model(savepath)
+
+        test_cost, test_prediction = self.test_results(test)
+        test_accuracy = self.prediction_accuracy(test_prediction, test[1])
         self.monitor.append_values(test_cost, test_accuracy, 'test')
         self.monitor.print_results("test")   
         savepath =  filepath + "_performance.pickle"
@@ -314,7 +332,6 @@ def build_model(layers, input_var, target_var, optimization):
 
     # test/validation set 
     test_cost, test_prediction = build_cost(network, target_var, objective=optimization["objective"], deterministic=True)
-    test_accuracy = prediction_accuracy(test_prediction, target_var, objective=optimization["objective"])
 
     # weight-decay regularization
     if "l1" in optimization:
@@ -325,8 +342,8 @@ def build_model(layers, input_var, target_var, optimization):
         test_cost += l2_penalty 
 
     # create theano function
-    train_fun = theano.function([input_var, target_var], [cost, test_accuracy], updates=updates)
-    test_fun = theano.function([input_var, target_var], [test_cost, test_accuracy])
+    train_fun = theano.function([input_var, target_var], [cost, prediction], updates=updates)
+    test_fun = theano.function([input_var, target_var], [test_cost, test_prediction])
 
     return network, train_fun, test_fun
 
@@ -452,16 +469,6 @@ def optimizer(grad, params, update_params):
     return updates
 
 
-def  prediction_accuracy(prediction, target_var, objective):
-
-    if objective == "categorical":
-        accuracy = T.mean(T.eq(T.argmax(prediction, axis=1), target_var),
-                                                  dtype=theano.config.floatX)
-    elif objective == "binary":
-        accuracy = T.mean(T.eq(prediction, target_var))
-    elif objective == "meansquare":
-        print "work in progress"
-    return accuracy
 
 #------------------------------------------------------------------------------------------
 # Training functions

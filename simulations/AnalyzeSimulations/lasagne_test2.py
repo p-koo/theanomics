@@ -35,3 +35,4 @@ nnmodel.train(train, valid, test, batch_size=500, num_epochs=500,
                   patience=5, save=save, filepath=filepath, verbose=1)
 
 
+
