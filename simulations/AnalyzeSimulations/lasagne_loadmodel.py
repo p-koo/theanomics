@@ -6,7 +6,7 @@ import theano
 import theano.tensor as T
 from six.moves import cPickle
 import matplotlib.pyplot as plt
-sys.path.append('/home/peter/Code/GenomeMotifs/src')
+sys.path.append('/home/peter/GenomeMotifs/src')
 from neuralnetwork import NeuralNetworkModel
 from data_utils import load_MotifSimulation
 from utils import make_directory
@@ -28,11 +28,11 @@ shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = max(train[1])+1
 
 save = 'all' # final
-savename = 'sim1'
+savename = 'mytest'
 savepath = os.path.join(dirpath,'Results',savename)
 
 # load best model
-filepath = savepath + "_best.pickle"
+filepath = savepath + "_3.pickle"
 f = open(filepath, 'rb')
 all_param_values = cPickle.load(f)
 f.close()
@@ -52,19 +52,29 @@ accuracy = np.zeros((num_labels))
 auc_roc = np.zeros((num_labels))
 auc_pr = np.zeros((num_labels))
 for i in range(num_labels):
+	print i
+
 	# accuracy score
 	score = accuracy_score(y[:,i], np.round(prediction[:,i]))
 	accuracy[i] = score
+	print score
 
 	# receiver-operator characteristic curve
 	fpr, tpr, thresholds = roc_curve(y[:,i], prediction[:,i])
-	auc_roc[i] = auc(fpr, tpr)
+	score = auc(fpr, tpr)
+	auc_roc[i]= score
 	roc.append((fpr, tpr))
+	print score
 
 	# precision recall curve
 	precision, recall, thresholds = precision_recall_curve(y[:,i], prediction[:,i])
-	auc_pr[i] = auc(recall, precision)
+	score = auc(recall, precision)
+	auc_pr[i] = score
 	pr.append((precision, recall))
+	print score
+	print '------------------------------------------'
+
+
 
 print str(np.mean(accuracy))
 print str(np.mean(auc_roc))
