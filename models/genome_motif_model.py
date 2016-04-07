@@ -3,7 +3,7 @@ import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal, 
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 
-def deepsea_model(shape, num_labels):
+def genome_motif_model(shape, num_labels):
 
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
@@ -14,34 +14,38 @@ def deepsea_model(shape, num_labels):
 	          'shape': shape
 	          }
 	layer2 = {'layer': 'convolution', 
-	          'num_filters': 240, 
+	          'num_filters': 200, 
 	          'filter_size': (8, 1),
-	          'pool_size': (4, 1)
+	          'pool_size': (4, 1),
 	          'W': GlorotUniform(),
-	          'b': Constant(0.05),
-	          'activation': 'relu'
+	          'b': None,
+	          'norm': 'batch', 
+	          'activation': 'prelu'
 	          }
 	layer3 = {'layer': 'convolution', 
-	          'num_filters': 480, 
+	          'num_filters': 300, 
 	          'filter_size': (8, 1),
-	          'pool_size': (4, 1)
+	          'pool_size': (4, 1),
 	          'W': GlorotUniform(),
-	          'b': Constant(0.05),
-	          'activation': 'relu'
+	          'b': None,
+	          'norm': 'batch', 
+	          'activation': 'prelu'
 	          }
 	layer4 = {'layer': 'convolution', 
-	          'num_filters': 960, 
+	          'num_filters': 300, 
 	          'filter_size': (8, 1),
-	          'pool_size': (4, 1)
+	          'pool_size': (4, 1),
 	          'W': GlorotUniform(),
-	          'b': Constant(0.05),
-	          'activation': 'relu'
+	          'b': None,
+	          'norm': 'batch', 
+	          'activation': 'prelu'
 	          }
 	layer5 = {'layer': 'dense', 
 	          'num_units': 1000, 
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05), 
 	          'dropout': .5,
+	          'norm': 'batch', 
 	          'activation': 'relu'
 	          }
 	layer6 = {'layer': 'dense', 

@@ -1,53 +1,77 @@
-#!/bin/python
+
 import os
 import sys
 import numpy as np
 from six.moves import cPickle
+import theano
 import time
+
 import theano
 import theano.tensor as T
-from lasagne import layers, nonlinearities, objectives, updates, regularization, init
-from utils import calculate_metrics, batch_generator
+import lasagne
+from lasagne.layers import InputLayer, DenseLayer, Conv2DLayer, MaxPool2DLayer
+from lasagne.layers import BatchNormLayer, ParametricRectifierLayer, NonlinearityLayer
+from lasagne.nonlinearities import sigmoid, rectify, softmax, linear, tanh, LeakyRectify, softplus
+from lasagne.layers import DropoutLayer, get_output, get_all_params, get_output_shape
+from lasagne.layers import get_all_param_values, set_all_param_values
+from lasagne.objectives import binary_crossentropy, categorical_crossentropy, squared_error
+from lasagne.regularization import regularize_layer_params_weighted, l2, l1
+from lasagne.init import Constant
+from lasagne.regularization import regularize_layer_params, regularize_network_params
+from lasagne.updates import sgd, nesterov_momentum, rmsprop, adagrad, adam, total_norm_constraint
+from utils import calculate_metrics
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
 #------------------------------------------------------------------------------------------
 
-class NeuralNets:
-	"""Class to build and train a feed-forward neural network"""
+class NeuralNetworkModel:
 
-	def __init__(self, layers, input_var, target_var, optimization):
+	def __init__(self, model_name, shape, num_labels):
+
+		# get model architecture (in models.py file)
+		layers, input_var, target_var, optimization = get_model(model_name, shape, num_labels)
 
 		# build model 
-		network, train_fun, test_fun = build_model(model_layers, input_var, target_var, optimization)
+		network, train_fun, test_fun = build_model(layers, input_var, target_var, optimization)
 
+		self.model_name = model_name
+		self.shape = shape
+		self.num_labels = num_labels
+		self.layers = layers
+		self.input_var = input_var
+		self.target_var = target_var
+		self.optimization = optimization
 		self.network = network
 		self.train_fun = train_fun
 		self.test_fun = test_fun
+		# self.monitor = MonitorTraining()
 		self.best_parameters = []
 		self.train_monitor = MonitorPerformance(name="train")
 		self.test_monitor = MonitorPerformance(name=" test")
 		self.valid_monitor = MonitorPerformance(name="cross-validation")
-		self.num_train_epochs = 0
+
+	def get_model_name(self):
+		return self.model_name
 
 
 	def get_model_parameters(self):
-		return layers.get_all_param_values(self.network)
+		return get_all_param_values(self.network)
 
 
 	def set_model_parameters(self, all_param_values):
-		self.network = layers.set_all_param_values(self.network, all_param_values)
+		self.network = set_all_param_values(self.network, all_param_values)
 
 
 	def save_model_parameters(self, filepath):
 		print "saving model parameters to: " + filepath
-		all_param_values = layers.get_all_param_values(self.network)
+		all_param_values = get_all_param_values(self.network)
 		f = open(filepath, 'wb')
 		cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 
-
 	def set_best_model(self, filepath):
+		# load best parameters
 		min_cost, min_index = self.valid_monitor.get_min_cost()    
 		savepath = filepath + "_" + str(min_index) + ".pickle"
 		f = open(savepath, 'rb')
@@ -55,15 +79,13 @@ class NeuralNets:
 		f.close()
 		self.set_model_parameters(self.best_parameters)
 
-
 	def test_results(self, test):
 		test_cost, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
 		return test_cost, test_prediction
 
 
 	def epoch_train(self,  mini_batches, num_batches, verbose):        
-		"""Train a mini-batch --> single epoch"""
-
+		
 		# set timer for epoch run
 		performance = MonitorPerformance(verbose)
 		performance.set_start_time(start_time = time.time())
@@ -79,9 +101,9 @@ class NeuralNets:
 		return epoch_cost/num_batches
 
 
-	def train_model(self, train, valid, batch_size=128, num_epochs=500, 
-					patience=10, verbose=1, filepath='.'):
-		"""Train a model with cross-validation data and test data"""
+	def train(self, train, valid, test, batch_size=128, num_epochs=500, 
+					patience=10, save='all', filepath='.', verbose=1):
+
 		# setup generator for mini-batches
 		num_train_batches = len(train[0]) // batch_size
 		train_batches = batch_generator(train[0], train[1], batch_size)
@@ -100,78 +122,49 @@ class NeuralNets:
 			self.valid_monitor.update(valid_cost, valid_prediction, valid[1])
 			self.valid_monitor.print_results("valid", epoch, num_epochs) 
 
-			# save model
-			if filepath:
-				self.num_train_epochs += 1
-				savepath = filepath + "_" + str(epoch) + ".pickle"
-				self.save_model_parameters(savepath)
-
-			# check for early stopping					
 			status = self.valid_monitor.early_stopping(valid_cost, epoch, patience)
 			if not status:
 				break
+			"""                
+			# store training performance info
+			self.monitor.append_values(train_cost, 'train')
+			self.monitor.append_values(valid_cost, 'valid')
+			self.monitor.print_results("valid", epoch, num_epochs) 
+			print [accuracy, auc_roc, auc_pr]
 
+			self.update_best_model_parameters()
 
-	def save_best_model(self, filepath):
-		""" update model with best parameters on cross-validation and save"""
+			# check for early stopping
+			status = self.monitor.early_stopping(patience)
+			if not status:
+				break
+			"""
+			# save model
+			if save == 'all':
+				savepath = filepath + "_" + str(epoch) + ".pickle"
+				self.save_model_parameters(savepath)
+					
+		# update model with best parameters on cross-validation
 		self.set_best_model(filepath)
 		savepath = filepath + "_best.pickle"
 		self.save_model_parameters(savepath)
 
-
-	def test_model(self, test):
+		# test performance
 		test_cost, test_prediction = self.test_results(test)
 		self.test_monitor.update(test_cost, test_prediction, test[1])
 		self.test_monitor.print_results("test")   
 
-
-	def save_metrics(self, filepath, name):
-		if name == "train":
-			self.train_monitor.save_metrics(filepath)
-		elif name == "test":
-			self.test_monitor.save_metrics(filepath)
-		elif name == "valid":
-			self.valid_monitor.save_metrics(filepath)
-
-
-	def save_all_metrics(self, filepath):
-		self.save_metrics(filepath, "train")
-		self.save_metrics(filepath, "test")
-		self.save_metrics(filepath, "valid")
-
-
-	def test_model_all(self, test, filepath):
-		"""loops through training parameters for epochs min_index 
-		to max_index located in filepath and calculates metrics for 
-		test data """
-
-		performance = MonitorPerformance("test_all")
-		for epoch in range(self.num_train_epochs):
-			if verbose == 1:
-				sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, self.num_train_epochs))
-			
-			# load model parameters for a given training epoch
-			savepath = filepath + "_" + str(min_index) + ".pickle"
-			f = open(savepath, 'rb')
-			self.best_parameters = cPickle.load(f)
-			f.close()
-
-			self.set_model_parameters(self.best_parameters)
-			test_cost, test_prediction = self.test_results(test)
-			self.performance.update(test_cost, test_prediction, test[1])
-			self.valid_monitor.print_results("test", epoch, num_epochs) 
-
-		self.valid_monitor.save_metrics(filepath)
+		# save results
+		self.train_monitor.save_performance(filepath)
+		self.test_monitor.save_performance(filepath)
+		self.valid_monitor.save_performance(filepath)
 
 
 #----------------------------------------------------------------------------------------------------
-# Monitor performance metrics class
+# Monitor traning class
 #----------------------------------------------------------------------------------------------------
 
 class MonitorPerformance():
-	"""helper class to monitor and store performance metrics during 
-	   training. This class uses the metrics for early stopping. """
-
 	def __init__(self, name = '', verbose=1):
 		self.cost = []
 		self.metric = np.empty(3)
@@ -181,17 +174,14 @@ class MonitorPerformance():
 		self.roc = []
 		self.pr = []
 
-
 	def set_verbose(self, verbose):
 		self.verbose = verbose
-
 
 	def get_metrics(self, prediction, label):
 		mean, std, roc, pr = calculate_metrics(label, prediction)
 		self.roc = roc
 		self.pr = pr 
 		return mean, std, roc, pr
-
 
 	def add(self, cost, mean=[], std=[]):
 		self.cost.append(cost)
@@ -200,27 +190,22 @@ class MonitorPerformance():
 		if std:
 			self.metric_std = np.vstack([self.metric_std, std])
 
-
 	def update(self, cost, prediction, label):
 		mean, std, roc, pr = self.get_metrics(prediction, label)
 		self.add(cost, mean, std)
-
 
 	def get_mean_values(self):
 		results = self.metric[-1,:]
 		return results[0], results[1], results[2]
 
-
 	def get_error_values(self):
 		results = self.metric_std[-1,:]
 		return results[0], results[1], results[2]
-
 
 	def get_min_cost(self):
 		min_cost = min(self.cost)
 		min_index = np.argmin(self.cost)
 		return min_cost, min_index
-
 
 	def early_stopping(self, current_cost, current_epoch, patience):
 		min_cost, min_epoch = self.get_min_cost()
@@ -231,11 +216,9 @@ class MonitorPerformance():
 				print "Patience ran out... Early stopping."
 		return status
 
-
 	def set_start_time(self, start_time):
 		if self.verbose == 1:
 			self.start_time = start_time
-
 
 	def print_results(self, name, epoch=0, num_epochs=0): 
 		if self.verbose == 1:
@@ -247,7 +230,6 @@ class MonitorPerformance():
 			print("  " + name + " auc-pr:\t\t{:.4f}+/-{:.4f}".format(auc_pr, auc_pr_std))
 			#print("  " + name + " accuracy:\t{:.2f} %".format(float(accuracy)*100))
 
-
 	def progress_bar(self, index, num_batches, cost, bar_length=30):
 		if self.verbose == 1:
 			remaining_time = (time.time()-self.start_time)*(num_batches-index-1)/(index+1)
@@ -258,8 +240,7 @@ class MonitorPerformance():
 			%(progress+spaces, percent*100, remaining_time, cost))
 			sys.stdout.flush()
 
-
-	def save_metrics(self, filepath):
+	def save_performance(self, filepath):
 		savepath = filepath + "_" + self.name +".pickle"
 		
 		f = open(savepath, 'wb')
@@ -271,87 +252,104 @@ class MonitorPerformance():
 		cPickle.dump(self.pr, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 
-
 #------------------------------------------------------------------------------------------
-# Neural network model building functions
+# Model building functions
 #------------------------------------------------------------------------------------------
 
-def build_model(model_layers, input_var, target_var, optimization):
+def get_model(model_name, shape, num_labels):
+
+	# load and build model parameters
+	if model_name == "simple_genome_motif_model":
+		from simple_genome_motif_model import simple_genome_motif_model
+		layers, input_var, target_var, optimization = simple_genome_motif_model(shape, num_labels)
+
+	return layers, input_var, target_var, optimization
+
+
+def build_model(layers, input_var, target_var, optimization):
 
 	# build model based on layers
-	network = build_layers(model_layers, input_var)
+	network = build_layers(layers, input_var)
 
 	# build cost function
-	prediction = layers.get_output(network, deterministic=False)
-	cost = build_cost(network, target_var, prediction, optimization)
+	cost, prediction = build_cost(network, target_var, objective=optimization["objective"])
 
 	# calculate and clip gradients
-	params = layers.get_all_params(network, trainable=True)    
+	params = get_all_params(network, trainable=True)    
 	if "weight_norm" in optimization:
 		grad = calculate_gradient(network, cost, params, weight_norm=optimization["weight_norm"])
 	else:
 		grad = calculate_gradient(network, cost, params)
 	  
 	# setup parameter updates
-	update_op = optimizer(grad, params, optimization)
+	updates = optimizer(grad, params, optimization)
 
 	# test/validation set 
-	test_prediction = layers.get_output(network, deterministic=True)
-	test_cost = build_cost(network, target_var, test_prediction, optimization)
+	test_cost, test_prediction = build_cost(network, target_var, objective=optimization["objective"], deterministic=True)
+
+	# weight-decay regularization
+	if "l1" in optimization:
+		l1_penalty = regularize_network_params(network, l1) * optimization["l1"]
+		test_cost += l1_penalty
+	if "l2" in optimization:
+		l2_penalty = regularize_network_params(network, l2) * optimization["l2"]        
+		test_cost += l2_penalty 
 
 	# create theano function
-	train_fun = theano.function([input_var, target_var], [cost, prediction], updates=update_op)
+	train_fun = theano.function([input_var, target_var], [cost, prediction], updates=updates)
 	test_fun = theano.function([input_var, target_var], [test_cost, test_prediction])
 
 	return network, train_fun, test_fun
 
 
-def build_layers(model_layers, input_var):
-	""" build all layers in the model """
+def build_layers(layers, input_var):
 
-	def single_layer(model_layer, network=[]):
-		""" build a single layer"""
+	# build a single layer
+	def single_layer(layer, network=[]):
+
 		# input layer
-		if model_layer['layer'] == 'input':
-			network = layers.InputLayer(layer['shape'], input_var=model_layer['input_var'])
+		if layer['layer'] == 'input':
+			network = InputLayer(layer['shape'], input_var=layer['input_var'])
 
 		# dense layer
-		elif model_layer['layer'] == 'dense':
-			network = layers.DenseLayer(network, num_units=model_layer['num_units'],
-												 W=model_layer['W'],
-												 b=model_layer['b'])
+		elif layer['layer'] == 'dense':
+			network = DenseLayer(network,
+								num_units=layer['num_units'],
+								W=layer['W'],
+								b=layer['b'])
 
 		# convolution layer
-		elif model_layer['layer'] == 'convolution':
-			network = layers.Conv2DLayer(network, num_filters = model_layer['num_filters'],
-												  filter_size = model_layer['filter_size'],
-											 	  W=model_layer['W'],
-										   		  b=model_layer['b'])
+		elif layer['layer'] == 'convolution':
+			network = Conv2DLayer(network,
+								  num_filters = layer['num_filters'],
+								  filter_size = layer['filter_size'],
+								  W=layer['W'],
+								  b=layer['b'])
 		return network
 
 	# loop to build each layer of network
 	network = []
-	for model_layer in model_layers:
+	for layer in layers:
 
 		# create base layer
-		network = single_layer(model_layer, network)
+		network = single_layer(layer, network)
 				
 		# add Batch normalization layer
-		if 'norm' in model_layer:
-			if model_layer['norm'] == 'batch':
-				network = layers.BatchNormLayer(network)
+		if 'norm' in layer:
+			if layer['norm'] == 'batch':
+				network = BatchNormLayer(network)
 
 		# add activation layer
-		if 'activation' in model_layer:
-			network = activation_layer(network, model_layer['activation']) 
+		if 'activation' in layer:
+			network = activation_layer(network, layer['activation']) 
 			
 		# add dropout layer
-		if 'dropout' in model_layer:
-			layers.DropoutLayer(network, p=model_layer['dropout'])
+		if 'dropout' in layer:
+			DropoutLayer(network, p=layer['dropout'])
 
 		# add max-pooling layer
-		if model_layer['layer'] == 'convolution':            
-			network = layers.MaxPool2DLayer(network, pool_size=model_layer['pool_size'])
+		if layer['layer'] == 'convolution':            
+			network = MaxPool2DLayer(network, pool_size=layer['pool_size'])
 
 	return network
 
@@ -359,108 +357,107 @@ def build_layers(model_layers, input_var):
 def activation_layer(network, activation):
 
 	if activation == 'prelu':
-		network = layers.ParametricRectifierLayer(network,
-												  alpha=init.Constant(0.25),
-												  shared_axes='auto')
+		network = ParametricRectifierLayer(network,
+										  alpha=Constant(0.25),
+										  shared_axes='auto')
+
 	elif activation == 'sigmoid':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.sigmoid)
+		network = NonlinearityLayer(network, nonlinearity=sigmoid)
 
 	elif activation == 'softmax':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.softmax)
+		network = NonlinearityLayer(network, nonlinearity=softmax)
 
 	elif activation == 'linear':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.linear)
+		network = NonlinearityLayer(network, nonlinearity=linear)
 
 	elif activation == 'tanh':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.tanh)
+		network = NonlinearityLayer(network, nonlinearity=tanh)
 
 	elif activation == 'softplus':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.softplus)
+		network = NonlinearityLayer(network, nonlinearity=softplus)
 
 	elif activation == 'leakyrelu':
-			network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.leaky_rectify)
-	
-	elif activation == 'veryleakyrelu':
-			network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.very_leaky_rectify)
+		if 'leakiness' in layer:
+			network = NonlinearityLayer(network, nonlinearity=LeakyRectify(leakiness))
+		else:
+			network = NonlinearityLayer(network, nonlinearity=LeakyRectify(.05))
 		
 	elif activation == 'relu':
-		network = layers.NonlinearityLayer(network, nonlinearity=nonlinearities.rectify)
+		network = NonlinearityLayer(network, nonlinearity=rectify)
 	
 	return network
 
+def build_cost(network, target_var, objective, deterministic=False):
 
-def build_cost(network, target_var, prediction, optimization):
-	""" setup cost function with weight decay regularization """
-
-	if optimization["objective"] == 'categorical':
-		cost = objectives.categorical_crossentropy(prediction, target_var)
-	elif optimization["objective"] == 'binary':
-		cost = objectives.binary_crossentropy(prediction, target_var)
-	elif optimization["objective"] == 'mse':
-		cost = objectives.squared_error(prediction, target_var)
+	prediction = get_output(network, deterministic=deterministic)
+	if objective == 'categorical':
+		cost = categorical_crossentropy(prediction, target_var)
+	elif objective == 'binary':
+		cost = binary_crossentropy(prediction, target_var)
+	elif objective == 'mse':
+		cost = squared_error(prediction, target_var)
 	cost = cost.mean()
-
-	# weight-decay regularization
-	if "l1" in optimization:
-		l1_penalty = regularization.regularize_network_params(network, l1) * optimization["l1"]
-		test_cost += l1_penalty
-	if "l2" in optimization:
-		l2_penalty = regularization.regularize_network_params(network, l2) * optimization["l2"]        
-		test_cost += l2_penalty 
-
-	return cost
+	return cost, prediction
 
 
-def calculate_gradient(network, cost, params, weight_norm=[]):
-	""" calculate gradients with option to clip norm """
+def calculate_gradient(network, cost, params, weight_norm=0):
+
 	# calculate gradients
 	grad = T.grad(cost, params)
 
 	# gradient clipping option
-	if weight_norm:
-		grad = updates.total_norm_constraint(grad, weight_norm)
+	if weight_norm > 0:
+		grad = total_norm_constraint(grad, weight_norm)
 
 	return grad
 
 
 def optimizer(grad, params, update_params):
-	""" setup optimization algorithm """
 
 	if update_params['optimizer'] == 'sgd':
-		update_op = updates.sgd(grad, params, learning_rate=update_params['learning_rate']) 
+		updates = sgd(grad, params, learning_rate=update_params['learning_rate']) 
  
 	elif update_params['optimizer'] == 'nesterov_momentum':
-		update_op = updates.nesterov_momentum(grad, params, 
+		updates = nesterov_momentum(grad, params, 
 									learning_rate=update_params['learning_rate'], 
 									momentum=update_params['momentum'])
 	
 	elif update_params['optimizer'] == 'adagrad':
 		if "learning_rate" in update_params:
-			update_op = updates.adagrad(grad, params, 
+			updates = adagrad(grad, params, 
 							  learning_rate=update_params['learning_rate'], 
 							  epsilon=update_params['epsilon'])
 		else:
-			update_op = updates.adagrad(grad, params)
+			updates = adagrad(grad, params)
 
 	elif update_params['optimizer'] == 'rmsprop':
 		if "learning_rate" in update_params:
-			update_op = updates.rmsprop(grad, params, 
+			updates = rmsprop(grad, params, 
 							  learning_rate=update_params['learning_rate'], 
 							  rho=update_params['rho'], 
 							  epsilon=update_params['epsilon'])
 		else:
-			update_op = updates.rmsprop(grad, params)
+			updates = rmsprop(grad, params)
 	
 	elif update_params['optimizer'] == 'adam':
 		if "learning_rate" in update_params:
-			update_op = updates.adam(grad, params, 
+			updates = adam(grad, params, 
 							learning_rate=update_params['learning_rate'], 
 							beta1=update_params['beta1'], 
 							beta2=update_params['beta2'], 
 							epsilon=update['epsilon'])
 		else:
-			update_op = updates.adam(grad, params)
+			updates = adam(grad, params)
   
-	return update_op
+	return updates
+
+#------------------------------------------------------------------------------------------
+# Training functions
+#------------------------------------------------------------------------------------------
+
+def batch_generator(X, y, N):
+	while True:
+		idx = np.random.choice(len(y), N)
+		yield X[idx].astype('float32'), y[idx].astype('int32')
 
 
