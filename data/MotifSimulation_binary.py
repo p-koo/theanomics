@@ -6,7 +6,7 @@ import h5py
 import scipy.io
 from six.moves import cPickle
 	
-def load_MotifSimulation_binary(filepath):
+def MotifSimulation_binary(filepath):
 	# setup paths for file handling
 
 	# load training set

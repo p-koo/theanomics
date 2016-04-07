@@ -6,7 +6,7 @@ import h5py
 import scipy.io
 from six.moves import cPickle
 	
-def load_DeepSea(filepath, num_include=4400000, class_range=range(918)):
+def DeepSea(filepath, num_include=4400000, class_range=range(918)):
 	"""Loads DeepSea dataset"""
 	
 	def data_subset(y, class_range, negative=True):

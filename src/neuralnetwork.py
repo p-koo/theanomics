@@ -7,7 +7,7 @@ import time
 import theano
 import theano.tensor as T
 from lasagne import layers, nonlinearities, objectives, updates, regularization, init
-from utils import calculate_metrics, batch_generator
+from utils import calculate_metrics
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
@@ -16,7 +16,7 @@ from utils import calculate_metrics, batch_generator
 class NeuralNets:
 	"""Class to build and train a feed-forward neural network"""
 
-	def __init__(self, layers, input_var, target_var, optimization):
+	def __init__(self, model_layers, input_var, target_var, optimization):
 
 		# build model 
 		network, train_fun, test_fun = build_model(model_layers, input_var, target_var, optimization)
@@ -26,9 +26,8 @@ class NeuralNets:
 		self.test_fun = test_fun
 		self.best_parameters = []
 		self.train_monitor = MonitorPerformance(name="train")
-		self.test_monitor = MonitorPerformance(name=" test")
+		self.test_monitor = MonitorPerformance(name="  test")
 		self.valid_monitor = MonitorPerformance(name="cross-validation")
-		self.num_train_epochs = 0
 
 
 	def get_model_parameters(self):
@@ -56,12 +55,21 @@ class NeuralNets:
 		self.set_model_parameters(self.best_parameters)
 
 
-	def test_results(self, test):
+	def test_step_batch(self, test):
 		test_cost, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
 		return test_cost, test_prediction
 
 
-	def epoch_train(self,  mini_batches, num_batches, verbose):        
+	def test_step_minibatch(self, mini_batches, num_batches):
+		performance = MonitorPerformance()
+		for index in range(num_batches):
+			X, y = next(mini_batches)
+			cost, prediction = self.test_fun(X, y)
+			performance.add_cost(cost)
+		return performance.get_mean_cost()
+		
+
+	def train_step(self,  mini_batches, num_batches, verbose=1):        
 		"""Train a mini-batch --> single epoch"""
 
 		# set timer for epoch run
@@ -69,60 +77,26 @@ class NeuralNets:
 		performance.set_start_time(start_time = time.time())
 
 		# train on mini-batch with random shuffling
-		epoch_cost = 0
 		for index in range(num_batches):
 			X, y = next(mini_batches)
 			cost, prediction = self.train_fun(X, y)
-			epoch_cost += cost
-			performance.progress_bar(index, num_batches, epoch_cost/(index+1))
+			performance.add_cost(cost)
+			performance.progress_bar(index, num_batches)
 		print "" 
-		return epoch_cost/num_batches
+		return performance.get_mean_cost()
 
 
-	def train_model(self, train, valid, batch_size=128, num_epochs=500, 
-					patience=10, verbose=1, filepath='.'):
-		"""Train a model with cross-validation data and test data"""
-		# setup generator for mini-batches
-		num_train_batches = len(train[0]) // batch_size
-		train_batches = batch_generator(train[0], train[1], batch_size)
-
-		# train model
-		for epoch in range(num_epochs):
-			if verbose == 1:
-				sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
-
-			# training set
-			train_cost = self.epoch_train(train_batches, num_train_batches, verbose)
-			self.train_monitor.add(train_cost)
-
-			# validation set
-			valid_cost, valid_prediction = self.test_results(valid)		
-			self.valid_monitor.update(valid_cost, valid_prediction, valid[1])
-			self.valid_monitor.print_results("valid", epoch, num_epochs) 
-
-			# save model
-			if filepath:
-				self.num_train_epochs += 1
-				savepath = filepath + "_" + str(epoch) + ".pickle"
-				self.save_model_parameters(savepath)
-
-			# check for early stopping					
-			status = self.valid_monitor.early_stopping(valid_cost, epoch, patience)
-			if not status:
-				break
-
-
-	def save_best_model(self, filepath):
-		""" update model with best parameters on cross-validation and save"""
-		self.set_best_model(filepath)
-		savepath = filepath + "_best.pickle"
-		self.save_model_parameters(savepath)
-
-
-	def test_model(self, test):
-		test_cost, test_prediction = self.test_results(test)
-		self.test_monitor.update(test_cost, test_prediction, test[1])
-		self.test_monitor.print_results("test")   
+	def test_model(self, test, name):
+		test_cost, test_prediction = self.test_step_batch(test)
+		if name == "train":
+			self.train_monitor.update(test_cost, test_prediction, test[1])
+			self.train_monitor.print_results(name)
+		if name == "valid":
+			self.valid_monitor.update(test_cost, test_prediction, test[1])
+			self.valid_monitor.print_results(name)
+		if name == "test":
+			self.test_monitor.update(test_cost, test_prediction, test[1])
+			self.test_monitor.print_results(name)
 
 
 	def save_metrics(self, filepath, name):
@@ -140,28 +114,8 @@ class NeuralNets:
 		self.save_metrics(filepath, "valid")
 
 
-	def test_model_all(self, test, filepath):
-		"""loops through training parameters for epochs min_index 
-		to max_index located in filepath and calculates metrics for 
-		test data """
-
-		performance = MonitorPerformance("test_all")
-		for epoch in range(self.num_train_epochs):
-			if verbose == 1:
-				sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, self.num_train_epochs))
-			
-			# load model parameters for a given training epoch
-			savepath = filepath + "_" + str(min_index) + ".pickle"
-			f = open(savepath, 'rb')
-			self.best_parameters = cPickle.load(f)
-			f.close()
-
-			self.set_model_parameters(self.best_parameters)
-			test_cost, test_prediction = self.test_results(test)
-			self.performance.update(test_cost, test_prediction, test[1])
-			self.valid_monitor.print_results("test", epoch, num_epochs) 
-
-		self.valid_monitor.save_metrics(filepath)
+	def get_num_epochs(self):
+		return self.train_monitor.get_length()
 
 
 #----------------------------------------------------------------------------------------------------
@@ -174,8 +128,8 @@ class MonitorPerformance():
 
 	def __init__(self, name = '', verbose=1):
 		self.cost = []
-		self.metric = np.empty(3)
-		self.metric_std = np.empty(3)
+		self.metric = np.zeros(3)
+		self.metric_std = np.zeros(3)
 		self.verbose = verbose
 		self.name = name
 		self.roc = []
@@ -186,25 +140,27 @@ class MonitorPerformance():
 		self.verbose = verbose
 
 
-	def get_metrics(self, prediction, label):
-		mean, std, roc, pr = calculate_metrics(label, prediction)
-		self.roc = roc
-		self.pr = pr 
-		return mean, std, roc, pr
+	def add_cost(self, cost):
+		self.cost = np.append(self.cost, cost)
 
 
-	def add(self, cost, mean=[], std=[]):
-		self.cost.append(cost)
+	def add_metrics(self, mean, std):
 		if mean:
 			self.metric = np.vstack([self.metric, mean])
 		if std:
 			self.metric_std = np.vstack([self.metric_std, std])
 
 
-	def update(self, cost, prediction, label):
-		mean, std, roc, pr = self.get_metrics(prediction, label)
-		self.add(cost, mean, std)
+	def get_length(self):
+		return len(self.cost)
 
+	def update(self, cost, prediction, label):
+		mean, std, roc, pr = calculate_metrics(label, prediction)
+		self.add_cost(cost)
+		self.add_metrics(mean, std)
+
+	def get_mean_cost(self):
+		return np.mean(self.cost)
 
 	def get_mean_values(self):
 		results = self.metric[-1,:]
@@ -237,31 +193,32 @@ class MonitorPerformance():
 			self.start_time = start_time
 
 
-	def print_results(self, name, epoch=0, num_epochs=0): 
+	def print_results(self, name): 
 		if self.verbose == 1:
-			accuracy, auc_roc, auc_pr = self.get_mean_values()
-			accuracy_std, auc_roc_std, auc_pr_std = self.get_error_values()
 			print("  " + name + " cost:\t\t{:.4f}".format(self.cost[-1]/1.))
-			print("  " + name + " accuracy:\t{:.4f}+/-{:.4f}".format(accuracy, accuracy_std))
-			print("  " + name + " auc-roc:\t{:.4f}+/-{:.4f}".format(auc_roc, auc_roc_std))
-			print("  " + name + " auc-pr:\t\t{:.4f}+/-{:.4f}".format(auc_pr, auc_pr_std))
-			#print("  " + name + " accuracy:\t{:.2f} %".format(float(accuracy)*100))
+			if self.metric.any():
+				accuracy, auc_roc, auc_pr = self.get_mean_values()
+				accuracy_std, auc_roc_std, auc_pr_std = self.get_error_values()
+				print("  " + name + " accuracy:\t{:.4f}+/-{:.4f}".format(accuracy, accuracy_std))
+				print("  " + name + " auc-roc:\t{:.4f}+/-{:.4f}".format(auc_roc, auc_roc_std))
+				print("  " + name + " auc-pr:\t\t{:.4f}+/-{:.4f}".format(auc_pr, auc_pr_std))
 
 
-	def progress_bar(self, index, num_batches, cost, bar_length=30):
+	def progress_bar(self, index, num_batches, bar_length=30):
 		if self.verbose == 1:
 			remaining_time = (time.time()-self.start_time)*(num_batches-index-1)/(index+1)
 			percent = (index+1.)/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
 			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- cost=%.4f" \
-			%(progress+spaces, percent*100, remaining_time, cost))
+			%(progress+spaces, percent*100, remaining_time, self.get_mean_cost()))
 			sys.stdout.flush()
 
 
 	def save_metrics(self, filepath):
-		savepath = filepath + "_" + self.name +".pickle"
-		
+		savepath = filepath + "_" + self.name +"_performance.pickle"
+		print "saving metrics to " + savepath
+
 		f = open(savepath, 'wb')
 		cPickle.dump(self.name, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.cost, f, protocol=cPickle.HIGHEST_PROTOCOL)
@@ -276,9 +233,10 @@ class MonitorPerformance():
 # Neural network model building functions
 #------------------------------------------------------------------------------------------
 
+# make neural network model build a class --> class BuildNNModel():
 def build_model(model_layers, input_var, target_var, optimization):
 
-	# build model based on layers
+	# build model 
 	network = build_layers(model_layers, input_var)
 
 	# build cost function
@@ -311,9 +269,10 @@ def build_layers(model_layers, input_var):
 
 	def single_layer(model_layer, network=[]):
 		""" build a single layer"""
+
 		# input layer
 		if model_layer['layer'] == 'input':
-			network = layers.InputLayer(layer['shape'], input_var=model_layer['input_var'])
+			network = layers.InputLayer(model_layer['shape'], input_var=model_layer['input_var'])
 
 		# dense layer
 		elif model_layer['layer'] == 'dense':
@@ -394,26 +353,29 @@ def build_cost(network, target_var, prediction, optimization):
 
 	if optimization["objective"] == 'categorical':
 		cost = objectives.categorical_crossentropy(prediction, target_var)
+
 	elif optimization["objective"] == 'binary':
 		cost = objectives.binary_crossentropy(prediction, target_var)
+
 	elif optimization["objective"] == 'mse':
 		cost = objectives.squared_error(prediction, target_var)
+
 	cost = cost.mean()
 
 	# weight-decay regularization
 	if "l1" in optimization:
-		l1_penalty = regularization.regularize_network_params(network, l1) * optimization["l1"]
-		test_cost += l1_penalty
+		l1_penalty = regularization.regularize_network_params(network, regularization.l1) * optimization["l1"]
+		cost += l1_penalty
 	if "l2" in optimization:
-		l2_penalty = regularization.regularize_network_params(network, l2) * optimization["l2"]        
-		test_cost += l2_penalty 
+		l2_penalty = regularization.regularize_network_params(network, regularization.l2) * optimization["l2"]        
+		cost += l2_penalty 
 
 	return cost
 
 
 def calculate_gradient(network, cost, params, weight_norm=[]):
 	""" calculate gradients with option to clip norm """
-	# calculate gradients
+
 	grad = T.grad(cost, params)
 
 	# gradient clipping option

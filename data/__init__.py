@@ -1,10 +1,12 @@
 
 from .load_data import load_data
-from .load_DeepSea import load_DeepSea
-from .load_MotifSimulation import load_MotifSimulation
+from .DeepSea import DeepSea
+from .MotifSimulation_binary import MotifSimulation_binary
+from .MotifSimulation_categorical import MotifSimulation_categorical
 
 __all__ = [
 		   'load_data',
-		   'load_DeepSea',
-           'load_MotifSimulation'
+		   'DeepSea',
+           'MotifSimulation_binary',
+           'MotifSimulation_categorical'
            ]

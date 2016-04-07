@@ -1,6 +1,6 @@
 #/bin/python
 import theano.tensor as T
-from lasagne.init import Constant, Normal, Uniform, GlorotNormal, 
+from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 
 def genome_motif_model(shape, num_labels):
@@ -55,17 +55,17 @@ def genome_motif_model(shape, num_labels):
 	          'activation': 'sigmoid'
 	          }
 	          
-	layers = [layer1, layer2, layer3, layer4, layer5, layer6]
+	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6]
 
 	# optimization parameters
 	optimization = {"objective": "binary",
 	                "optimizer": "nesterov_momentum", 
 	                "learning_rate": 0.1,
-	                "momentum": 0.9
+	                "momentum": 0.9,
 	                "weight_norm": 10,
 	                "l1": 1e-7,
 	                "l2": 1e-8, 
 	                }
 
-	return layers, input_var, target_var, optimization
+	return model_layers, input_var, target_var, optimization
 

@@ -2,6 +2,7 @@
 import sys
 import os
 import numpy as np
+sys.path.append('..')
 from src import NeuralNets, make_directory
 from models import load_model
 from data import load_data
@@ -22,10 +23,10 @@ num_labels = np.round(train[1].shape[1])
 
 # load model parameters
 model_name = "genome_motif_model"
-layers, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
+model_layers, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
 
 # build model
-nnmodel = NeuralNetworkModel(layers, input_var, target_var, optimization)
+nnmodel = NeuralNets(model_layers, input_var, target_var, optimization)
 
 # train model
 filename = 'genome_motif_model'

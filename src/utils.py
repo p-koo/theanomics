@@ -19,12 +19,14 @@ def make_directory(path, foldername, verbose=1):
 
 
 def batch_generator(X, y, N):
+	"""python generator to get a randomized minibatch"""
 	while True:
 		idx = np.random.choice(len(y), N)
 		yield X[idx].astype('float32'), y[idx].astype('int32')
 
 
 def one_hot_labels(label):
+	"""convert categorical labels to one hot"""
 	num_data = label.shape[0]
 	num_labels = max(label)+1
 	label_expand = np.zeros((num_data, num_labels))
@@ -34,12 +36,12 @@ def one_hot_labels(label):
 
 
 def calculate_metrics(label, prediction):
+	"""calculate metrics for classification"""
 
 	def accuracy_metrics(label, prediction):
 		num_labels = label.shape[1]
 		accuracy = np.zeros((num_labels))
 		for i in range(num_labels):
-			# accuracy score
 			score = accuracy_score(label[:,i], np.round(prediction[:,i]))
 			accuracy[i] = score
 		return accuracy
@@ -78,7 +80,6 @@ def calculate_metrics(label, prediction):
 	mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
 	std = [np.std(accuracy), np.std(auc_roc), np.std(auc_pr)]
 	return mean, std, roc, pr
-
 
 
 

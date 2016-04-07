@@ -6,7 +6,7 @@ import h5py
 import scipy.io
 from six.moves import cPickle
 	
-def load_MotifSimulation_categorical(filepath):
+def MotifSimulation_categorical(filepath):
 	# setup paths for file handling
 
 	# load training set
@@ -31,9 +31,9 @@ def load_MotifSimulation_categorical(filepath):
 	X_val = np.expand_dims(X_val, axis=3)
 	X_test = np.expand_dims(X_test, axis=3)
 
-	y_train = np.argmax(y_train,axis=1)
-	y_val = np.argmax(y_val,axis=1)
-	y_test = np.argmax(y_test,axis=1)
+	y_train = np.argmax(y_train, axis=1)
+	y_val = np.argmax(y_val, axis=1)
+	y_test = np.argmax(y_test, axis=1)
 
 	train = (X_train, y_train)
 	valid = (X_val, y_val)

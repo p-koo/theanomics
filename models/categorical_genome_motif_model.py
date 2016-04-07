@@ -45,16 +45,16 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'b': Constant(0.05),
 	          'activation': 'softmax'}
 
-	layers = [layer1, layer2, layer3, layer4, layer5]
+	model_layers = [layer1, layer2, layer3, layer4, layer5]
 
 	# optimization parameters
 	optimization = {"objective": "categorical",
                 "optimizer": "adam"
-                #"learning_rate": 0.1,
-                #"weight_norm": 10,
-                #"l1": 1e-7,
-                #"l2": 1e-8
-                #"momentum": 0.9
+#                "learning_rate": 0.1,
+#                "momentum": 0.9, 
+ #               "weight_norm": 10,
+#                "l1": 1e-7,
+ #               "l2": 1e-8,
                 }
                 
-	return layers, input_var, target_var, optimization
+	return model_layers, input_var, target_var, optimization
