@@ -32,7 +32,7 @@ def train_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 		
 		# save model
 		if filepath:
-			savepath = filepath + "_" + str(epoch) + ".pickle"
+			savepath = filepath + "_epoch_" + str(epoch) + ".pickle"
 			nnmodel.save_model_parameters(savepath)
 
 		# check for early stopping					
