@@ -17,7 +17,7 @@ def binary_genome_motif_model(shape, num_labels):
 	          'num_filters': 200, 
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
-	          'b': None,
+	          'b': Constant(0.05),
 	          'norm': 'batch', 
 	          'activation': 'prelu',
 	          'pool_size': (4, 1)}
@@ -25,7 +25,7 @@ def binary_genome_motif_model(shape, num_labels):
 	          'num_filters': 200, 
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
-	          'b': None,
+	          'b': Constant(0.05),
 	          'dropout': .2,
 	          'norm': 'batch', 
 	          'activation': 'prelu',
@@ -49,12 +49,12 @@ def binary_genome_motif_model(shape, num_labels):
 
 	# optimization parameters
 	optimization = {"objective": "binary",
-                "optimizer": "adam"
-#                "learning_rate": 0.1,
-#                "momentum": 0.9, 
-#                "weight_norm": 10
-#                "l1": 1e-7,
- #               "l2": 1e-8
-                }
+	                "optimizer": "adam",
+	 #               "learning_rate": 0.1,
+	#                "momentum": 0.9
+	                "weight_norm": 10
+	                #"l1": 1e-7,
+	                #"l2": 1e-8
+	                }
 
 	return model_layers, input_var, target_var, optimization

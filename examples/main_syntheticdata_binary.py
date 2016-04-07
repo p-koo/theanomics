@@ -3,7 +3,7 @@ import sys
 import os
 import numpy as np
 sys.path.append('..')
-from src import NeuralNets
+from src import NeuralNet
 from src import train_minibatch, test_model_all
 from src import make_directory 
 from models import load_model
@@ -27,7 +27,7 @@ model_name = "binary_genome_motif_model"
 model_layers, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
 
 # build model
-nnmodel = NeuralNets(model_layers, input_var, target_var, optimization)
+nnmodel = NeuralNet(model_layers, input_var, target_var, optimization)
 
 # set output file paths
 outputname = 'binary'
@@ -52,7 +52,7 @@ nnmodel.save_all_metrics(filepath)
 
 # monitor/save test performance with parameters for each training epoch
 num_train_epochs = nnmodel.get_num_epochs()
-performance = test_model_all(test, num_train_epochs, model_layers, input_var, target_var, optimization, filepath)
+performance = test_model_all(nnmodel, test, num_train_epochs, filepath)
 
 # save test performance
 performance.save_metrics(filepath)

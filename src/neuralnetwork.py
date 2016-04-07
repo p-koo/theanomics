@@ -13,22 +13,32 @@ from utils import calculate_metrics
 # Neural Network model class
 #------------------------------------------------------------------------------------------
 
-class NeuralNets:
+class NeuralNet:
 	"""Class to build and train a feed-forward neural network"""
 
 	def __init__(self, model_layers, input_var, target_var, optimization):
 
 		# build model 
+		self.model_layers = model_layers
+		self.input_var = input_var
+		self.target_var = target_var
+		self.optimization = optimization
 		network, train_fun, test_fun = build_model(model_layers, input_var, target_var, optimization)
-
 		self.network = network
 		self.train_fun = train_fun
 		self.test_fun = test_fun
-		self.best_parameters = []
 		self.train_monitor = MonitorPerformance(name="train")
 		self.test_monitor = MonitorPerformance(name="  test")
 		self.valid_monitor = MonitorPerformance(name="cross-validation")
 
+	def reinitialize(self):
+		network, train_fun, test_fun = build_model(self.model_layers, self.input_var, self.target_var, self.optimization)
+		self.network = network
+		self.train_fun = train_fun
+		self.test_fun = test_fun
+		self.train_monitor = MonitorPerformance(name="train")
+		self.test_monitor = MonitorPerformance(name="  test")
+		self.valid_monitor = MonitorPerformance(name="cross-validation")
 
 	def get_model_parameters(self):
 		return layers.get_all_param_values(self.network)
@@ -48,11 +58,11 @@ class NeuralNets:
 
 	def set_best_model(self, filepath):
 		min_cost, min_index = self.valid_monitor.get_min_cost()    
-		savepath = filepath + "_" + str(min_index) + ".pickle"
+		savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
 		f = open(savepath, 'rb')
-		self.best_parameters = cPickle.load(f)
+		best_parameters = cPickle.load(f)
 		f.close()
-		self.set_model_parameters(self.best_parameters)
+		self.set_model_parameters(best_parameters)
 
 
 	def test_step_batch(self, test):
@@ -210,7 +220,7 @@ class MonitorPerformance():
 			percent = (index+1.)/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- cost=%.4f" \
+			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- cost=%.5f     " \
 			%(progress+spaces, percent*100, remaining_time, self.get_mean_cost()))
 			sys.stdout.flush()
 

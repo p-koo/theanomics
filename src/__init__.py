@@ -1,5 +1,5 @@
 
-from .neuralnetwork import NeuralNets
+from .neuralnetwork import NeuralNet
 from .neuralnetwork import MonitorPerformance
 
 from .train import train_minibatch
@@ -10,7 +10,7 @@ from .utils import make_directory
 from .utils import one_hot_labels
 from .utils import calculate_metrics
 
-__all__ = ['NeuralNets', 
+__all__ = ['NeuralNet', 
 		   'MonitorPerformance',
 		   'make_directory',
 		   'batch_generator',

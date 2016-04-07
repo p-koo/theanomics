@@ -1,6 +1,6 @@
 #!/bin/python
 import sys
-from neuralnetwork import NeuralNets, MonitorPerformance
+from neuralnetwork import MonitorPerformance
 from utils import batch_generator
 from six.moves import cPickle
 
@@ -80,28 +80,29 @@ def train_valid_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			break
 
 	return nnmodel
+	
 
-def test_model_all(test, num_train_epochs, model_layers, input_var, target_var, optimization, filepath):
+def test_model_all(nnmodel, test, num_train_epochs, filepath):
 	"""loops through training parameters for epochs min_index 
 	to max_index located in filepath and calculates metrics for 
 	test data """
 	print "Model performance for each training epoch on on test data set"
-	
+
 	performance = MonitorPerformance("test_all")
 	for epoch in range(num_train_epochs):
 		sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_train_epochs))
 
 		# build a new neural network
-		nnmodel = NeuralNets(model_layers, input_var, target_var, optimization)
+		nnmodel.reinitialize()
 
 		# load model parameters for a given training epoch
 		savepath = filepath + "_epoch_" + str(epoch) + ".pickle"
 		f = open(savepath, 'rb')
-		nnmodel.best_parameters = cPickle.load(f)
+		best_parameters = cPickle.load(f)
 		f.close()
 
 		# get test metrics 
-		nnmodel.set_model_parameters(nnmodel.best_parameters)
+		nnmodel.set_model_parameters(best_parameters)
 		test_cost, test_prediction = nnmodel.test_step_batch(test)
 		performance.update(test_cost, test_prediction, test[1])
 		performance.print_results("test") 
