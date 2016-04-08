@@ -69,7 +69,6 @@ def calculate_metrics(label, prediction):
 			pr.append((precision, recall))
 		return auc_pr, pr
 
-
 	num_samples = len(prediction)
 	ndim = np.ndim(label)
 	if ndim == 1:
@@ -80,6 +79,7 @@ def calculate_metrics(label, prediction):
 	auc_pr, pr = pr_metrics(label, prediction)
 	mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
 	std = [np.std(accuracy), np.std(auc_roc), np.std(auc_pr)]
+	
 	return mean, std, roc, pr
 
 

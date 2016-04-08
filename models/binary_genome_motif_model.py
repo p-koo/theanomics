@@ -2,7 +2,8 @@
 import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
-
+sys.path.append('..')
+from src import build_network
 
 def binary_genome_motif_model(shape, num_labels):
 
@@ -46,6 +47,7 @@ def binary_genome_motif_model(shape, num_labels):
 	          'activation': 'sigmoid'}
 
 	model_layers = [layer1, layer2, layer3, layer4, layer5]
+    network = build_network(model_layers)
 
 	# optimization parameters
 	optimization = {"objective": "binary",
@@ -57,4 +59,4 @@ def binary_genome_motif_model(shape, num_labels):
 	                #"l2": 1e-8
 	                }
 
-	return model_layers, input_var, target_var, optimization
+	return network, input_var, target_var, optimization

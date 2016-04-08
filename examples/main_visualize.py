@@ -1,6 +1,3 @@
-
-
-
 #/bin/python
 import sys
 import os
@@ -36,8 +33,8 @@ filepath = os.path.join(datapath, 'Results', outputname)
 savepath = filepath + "_best.pickle"
 
 def load_best_model(model_name, savepath):
-	model_layers, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
-	nnmodel = NeuralNets(model_layers, input_var, target_var, optimization)
+	network, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
+	nnmodel = NeuralNets(network, input_var, target_var, optimization)
 	nnmodel.set_best_model(filepath)
 	return nnmodel
 

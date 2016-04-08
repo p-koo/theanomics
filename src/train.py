@@ -108,3 +108,9 @@ def test_model_all(nnmodel, test, num_train_epochs, filepath):
 		performance.print_results("test") 
 
 	return performance
+
+
+
+
+
+

@@ -24,10 +24,10 @@ num_labels = np.round(train[1].shape[1])
 
 # load model parameters
 model_name = "binary_genome_motif_model"
-model_layers, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
+network, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
 
 # build model
-nnmodel = NeuralNet(model_layers, input_var, target_var, optimization)
+nnmodel = NeuralNet(network, input_var, target_var, optimization)
 
 # set output file paths
 outputname = 'binary'
