@@ -11,13 +11,14 @@ from .train import train_valid_minibatch
 from .utils import make_directory
 from .utils import one_hot_labels
 from .utils import calculate_metrics
+from .utils import batch_generator
 
 
 __all__ = ['NeuralNet', 
-		   'MonitorPerformance',
-		   'build_network',
-		   'make_directory',
-		   'batch_generator',
+  		     'MonitorPerformance',
+  		     'build_network',
+  		     'make_directory',
+  		     'batch_generator',
            'one_hot_labels', 
            'calculate_metrics',
            'train_minibatch',

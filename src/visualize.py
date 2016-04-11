@@ -1,6 +1,4 @@
-
-
-from matplotlib import pyplot
+from matplotlib import plt
 
 
 

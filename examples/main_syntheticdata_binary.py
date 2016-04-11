@@ -10,6 +10,10 @@ from models import load_model
 from data import load_data
 np.random.seed(247) # for reproducibility
 
+import sys, os
+sys.path.append(os.path.join(os.path.realpath('..')))
+from src import build_network
+
 #------------------------------------------------------------------------------
 # load data
 

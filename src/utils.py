@@ -82,7 +82,3 @@ def calculate_metrics(label, prediction):
 	
 	return mean, std, roc, pr
 
-
-
-
-

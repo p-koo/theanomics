@@ -2,7 +2,7 @@
 import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
-
+from build_network import build_network
 
 def categorical_genome_motif_model(shape, num_labels):
 
@@ -20,7 +20,7 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
 	          'b': None,
-	          'norm': 'batch', 
+#	          'norm': 'batch', 
 	          'activation': 'prelu',
 	          'pool_size': (4, 1),
   			  'name': 'conv1'
@@ -31,7 +31,7 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'W': GlorotUniform(),
 	          'b': None,
 	          'dropout': .2,
-	          'norm': 'batch', 
+#	          'norm': 'batch', 
 	          'activation': 'prelu',
 	          'pool_size': (4, 1),
   			  'name': 'conv2'
@@ -42,7 +42,7 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05), 
 	          'dropout': .5,
-	          'norm': 'batch',
+#	          'norm': 'batch',
 	          'activation': 'prelu',
   			  'name': 'dense3'
   			  }
@@ -57,6 +57,7 @@ def categorical_genome_motif_model(shape, num_labels):
 
 
 	model_layers = [layer1, layer2, layer3, layer4, layer5]
+	network = build_network(model_layers)
 
 	# optimization parameters
 	optimization = {"objective": "categorical",
@@ -68,4 +69,4 @@ def categorical_genome_motif_model(shape, num_labels):
  #               "l2": 1e-8,
                 }
                 
-	return model_layers, input_var, target_var, optimization
+	return network, input_var, target_var, optimization

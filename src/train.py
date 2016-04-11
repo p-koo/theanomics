@@ -48,25 +48,26 @@ def train_valid_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			patience=10, verbose=1, filepath='.'):
 	"""Train a model with cross-validation data and test data"""
 
+	"""
 	# setup generator for mini-batches
 	num_train_batches = len(train[0]) // batch_size
-	train_batches = batch_generator(train[0], train[1], batch_size)
+	train_batches = 
 
 	num_valid_batches = len(valid[0]) // batch_size
 	valid_batches = batch_generator(valid[0], valid[1], batch_size)
-
+	"""
 	# train model
 	for epoch in range(num_epochs):
 		if verbose == 1:
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training set
-		train_cost = nnmodel.train_step(train_batches, num_train_batches, verbose)
+		train_cost = nnmodel.train_step(train, batch_size, verbose)
 		nnmodel.train_monitor.add_cost(train_cost)
 
 		# test current model with cross-validation data and store results
-		valid_cost = nnmodel.test_step_minibatch(train_batches, num_train_batches)
-		nnmodel.valid_monitor.add_cost(valid_cost)
+		valid_cost, valid_prediction, valid_label = nnmodel.test_step_minibatch(valid, batch_size)
+		nnmodel.valid_monitor.update(valid_cost, valid_prediction, valid_label)
 		nnmodel.valid_monitor.print_results("valid")
 		
 		# save model
@@ -82,7 +83,7 @@ def train_valid_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 	return nnmodel
 	
 
-def test_model_all(nnmodel, test, num_train_epochs, filepath):
+def test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath):
 	"""loops through training parameters for epochs min_index 
 	to max_index located in filepath and calculates metrics for 
 	test data """
@@ -103,9 +104,9 @@ def test_model_all(nnmodel, test, num_train_epochs, filepath):
 
 		# get test metrics 
 		nnmodel.set_model_parameters(best_parameters)
-		test_cost, test_prediction = nnmodel.test_step_batch(test)
-		performance.update(test_cost, test_prediction, test[1])
-		performance.print_results("test") 
+		test_cost, test_prediction, test_label = nnmodel.test_step_minibatch(test, batch_size)
+		performance.update(test_cost, test_prediction, test_label)
+		performance.print_results(" test") 
 
 	return performance
 

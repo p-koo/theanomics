@@ -7,7 +7,13 @@ import time
 import theano
 import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization
+
+
+sys.path.append(os.path.realpath('..'))
+from models import load_model
+sys.path.append('..')
 from utils import calculate_metrics
+from utils import batch_generator
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
@@ -16,62 +22,92 @@ from utils import calculate_metrics
 class NeuralNet:
 	"""Class to build and train a feed-forward neural network"""
 
-	def __init__(self, network, input_var, target_var, optimization, networkpath={}):
+	def __init__(self, model_name, shape, num_labels):
+		self.model_name = model_name
+		self.shape = shape
+		self.num_labels = num_labels
+
+		network, input_var, target_var, optimization = load_model(model_name, shape, num_labels)
 		self.network = network
 		self.input_var = input_var
 		self.target_var = target_var
 		self.optimization = optimization		
 
 		# build model 
-		train_fun, test_fun = build_optimization(network, input_var, target_var, optimization)
+		train_fun, test_fun = build_optimizer(network, input_var, target_var, optimization)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
 		self.train_monitor = MonitorPerformance(name="train")
-		self.test_monitor = MonitorPerformance(name="  test")
+		self.test_monitor = MonitorPerformance(name="test")
 		self.valid_monitor = MonitorPerformance(name="cross-validation")
 
 
+	def reinitialize(self):
+		network, input_var, target_var, optimization = load_model(self.model_name, self.shape, self.num_labels)
+		self.network = network
+		self.input_var = input_var
+		self.target_var = target_var
+		self.optimization = optimization
+
+		train_fun, test_fun = build_optimizer(self.network, self.input_var, self.target_var, self.optimization)
+		self.train_fun = train_fun
+		self.test_fun = test_fun
+
+
 	def get_model_parameters(self):
-		return layers.get_all_param_values(self.network)
+		return layers.get_all_param_values(self.network['output'])
 
 
 	def set_model_parameters(self, all_param_values):
-		self.network = layers.set_all_param_values(self.network, all_param_values)
+		self.network['output'] = layers.set_all_param_values(self.network['output'], all_param_values)
 
 
 	def save_model_parameters(self, filepath):
 		print "saving model parameters to: " + filepath
-		all_param_values = layers.get_all_param_values(self.network)
+		all_param_values = layers.get_all_param_values(self.network['output'])
 		f = open(filepath, 'wb')
 		cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 
 
-	def set_best_model(self, filepath):
+	def set_best_model_parameters(self, filepath):
 		min_cost, min_index = self.valid_monitor.get_min_cost()    
 		savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
 		f = open(savepath, 'rb')
 		best_parameters = cPickle.load(f)
-		f.close()
 		self.set_model_parameters(best_parameters)
-
+		
 
 	def test_step_batch(self, test):
 		test_cost, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
 		return test_cost, test_prediction
 
 
-	def test_step_minibatch(self, mini_batches, num_batches):
+	def test_step_minibatch(self, test, batch_size):
+
 		performance = MonitorPerformance()
-		for index in range(num_batches):
-			X, y = next(mini_batches)
-			cost, prediction = self.test_fun(X, y)
+
+		if np.ndim(test[1]) == 2:
+			label = np.empty(test[1].shape[1])
+		else:
+			label = np.empty(1)
+		prediction = np.empty((1,max(test[1])+1))
+
+		num_batches = test[1].shape[0] // batch_size
+		batches = batch_generator(test[0], test[1], batch_size)
+		for epoch in range(num_batches):
+			X, y = next(batches)
+			cost, prediction_minibatch = self.test_fun(X, y)
+
 			performance.add_cost(cost)
-		return performance.get_mean_cost()
+			prediction = np.concatenate((prediction, prediction_minibatch), axis=0)
+			label = np.concatenate((label, y), axis=0)
+
+		return performance.get_mean_cost(), prediction[1::], label[1::]
 		
 
-	def train_step(self,  mini_batches, num_batches, verbose=1):        
+	def train_step(self,  train, batch_size, verbose=1):        
 		"""Train a mini-batch --> single epoch"""
 
 		# set timer for epoch run
@@ -79,25 +115,27 @@ class NeuralNet:
 		performance.set_start_time(start_time = time.time())
 
 		# train on mini-batch with random shuffling
-		for index in range(num_batches):
-			X, y = next(mini_batches)
+		num_batches = train[0].shape[0] // batch_size
+		batches = batch_generator(train[0], train[1], batch_size)
+		for epoch in range(num_batches):
+			X, y = next(batches)
 			cost, prediction = self.train_fun(X, y)
 			performance.add_cost(cost)
-			performance.progress_bar(index, num_batches)
+			performance.progress_bar(epoch+1., num_batches)
 		print "" 
 		return performance.get_mean_cost()
 
 
-	def test_model(self, test, name):
-		test_cost, test_prediction = self.test_step_batch(test)
+	def test_model(self, test, batch_size, name):
+		test_cost, test_prediction, test_label = self.test_step_minibatch(test, batch_size)
 		if name == "train":
-			self.train_monitor.update(test_cost, test_prediction, test[1])
+			self.train_monitor.update(test_cost, test_prediction, test_label)
 			self.train_monitor.print_results(name)
 		if name == "valid":
-			self.valid_monitor.update(test_cost, test_prediction, test[1])
+			self.valid_monitor.update(test_cost, test_prediction, test_label)
 			self.valid_monitor.print_results(name)
 		if name == "test":
-			self.test_monitor.update(test_cost, test_prediction, test[1])
+			self.test_monitor.update(test_cost, test_prediction, test_label)
 			self.test_monitor.print_results(name)
 
 
@@ -160,6 +198,8 @@ class MonitorPerformance():
 		mean, std, roc, pr = calculate_metrics(label, prediction)
 		self.add_cost(cost)
 		self.add_metrics(mean, std)
+		self.roc = roc
+		self.pr = pr
 
 	def get_mean_cost(self):
 		return np.mean(self.cost)
@@ -206,10 +246,10 @@ class MonitorPerformance():
 				print("  " + name + " auc-pr:\t\t{:.4f}+/-{:.4f}".format(auc_pr, auc_pr_std))
 
 
-	def progress_bar(self, index, num_batches, bar_length=30):
+	def progress_bar(self, epoch, num_batches, bar_length=30):
 		if self.verbose == 1:
-			remaining_time = (time.time()-self.start_time)*(num_batches-index-1)/(index+1)
-			percent = (index+1.)/num_batches
+			remaining_time = (time.time()-self.start_time)*(num_batches-epoch)/epoch
+			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
 			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- cost=%.5f     " \
@@ -235,30 +275,30 @@ class MonitorPerformance():
 # Neural network model building functions
 #------------------------------------------------------------------------------------------
 
-def build_optimization(network, input_var, target_var, optimization):
+def build_optimizer(network, input_var, target_var, optimization):
 	# build cost function
-	prediction = layers.get_output(network, deterministic=False)
+	prediction = layers.get_output(network["output"], deterministic=False)
 	cost = build_cost(network, target_var, prediction, optimization)
 
 	# calculate and clip gradients
-	params = layers.get_all_params(network, trainable=True)    
+	params = layers.get_all_params(network["output"], trainable=True)    
 	if "weight_norm" in optimization:
-		grad = calculate_gradient(network, cost, params, weight_norm=optimization["weight_norm"])
+		grad = calculate_gradient(cost, params, weight_norm=optimization["weight_norm"])
 	else:
-		grad = calculate_gradient(network, cost, params)
+		grad = calculate_gradient(cost, params)
 	  
 	# setup parameter updates
-	update_op = optimizer(grad, params, optimization)
+	update_op = build_updates(grad, params, optimization)
 
 	# test/validation set 
-	test_prediction = layers.get_output(network, deterministic=True)
+	test_prediction = layers.get_output(network["output"], deterministic=True)
 	test_cost = build_cost(network, target_var, test_prediction, optimization)
 
 	# create theano function
 	train_fun = theano.function([input_var, target_var], [cost, prediction], updates=update_op)
 	test_fun = theano.function([input_var, target_var], [test_cost, test_prediction])
 
-	return network, train_fun, test_fun
+	return train_fun, test_fun
 
 
 def build_cost(network, target_var, prediction, optimization):
@@ -287,7 +327,7 @@ def build_cost(network, target_var, prediction, optimization):
 	return cost
 
 
-def calculate_gradient(network, cost, params, weight_norm=[]):
+def calculate_gradient(cost, params, weight_norm=[]):
 	""" calculate gradients with option to clip norm """
 
 	grad = T.grad(cost, params)
@@ -299,7 +339,7 @@ def calculate_gradient(network, cost, params, weight_norm=[]):
 	return grad
 
 
-def optimizer(grad, params, update_params):
+def build_updates(grad, params, update_params):
 	""" setup optimization algorithm """
 
 	if update_params['optimizer'] == 'sgd':
@@ -339,14 +379,4 @@ def optimizer(grad, params, update_params):
   
 	return update_op
 
-
-def accuracy_score(predictions, targets):
-	if objective == 'categorical':
-		score = objectives.categorical_accuracy(predictions, targets)
-	elif objective == 'binary':
-		score = objectives.binary_accuracy(predictions, targets)
-	else
-		score = 0
-	
-	return score
 
