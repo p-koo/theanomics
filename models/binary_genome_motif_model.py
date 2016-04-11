@@ -13,7 +13,9 @@ def binary_genome_motif_model(shape, num_labels):
     # create model
 	layer1 = {'layer': 'input',
 	          'input_var': input_var,
-	          'shape': shape}
+	          'shape': shape,
+  			  'name': 'input'
+  			  }
 	layer2 = {'layer': 'convolution', 
 	          'num_filters': 200, 
 	          'filter_size': (8, 1),
@@ -21,7 +23,9 @@ def binary_genome_motif_model(shape, num_labels):
 	          'b': Constant(0.05),
 	          'norm': 'batch', 
 	          'activation': 'prelu',
-	          'pool_size': (4, 1)}
+	          'pool_size': (4, 1),
+  			  'name': 'conv1'
+  			  }
 	layer3 = {'layer': 'convolution', 
 	          'num_filters': 200, 
 	          'filter_size': (8, 1),
@@ -30,7 +34,9 @@ def binary_genome_motif_model(shape, num_labels):
 	          'dropout': .2,
 	          'norm': 'batch', 
 	          'activation': 'prelu',
-	          'pool_size': (4, 1)}
+	          'pool_size': (4, 1),
+  			  'name': 'conv2'
+  			  }
 	layer4 = {'layer': 'dense', 
 	          'num_units': 200, 
 	          'default': True,
@@ -38,13 +44,17 @@ def binary_genome_motif_model(shape, num_labels):
 	          'b': Constant(0.05), 
 	          'dropout': .5,
 	          'norm': 'batch',
-	          'activation': 'prelu'}
+	          'activation': 'prelu',
+  			  'name': 'dense3'
+  			  }
 	layer5 = {'layer': 'dense', 
 	          'num_units': num_labels, 
 	          'default': True,
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
-	          'activation': 'sigmoid'}
+	          'activation': 'sigmoid',
+  			  'name': 'output'
+  			  }
 
 	model_layers = [layer1, layer2, layer3, layer4, layer5]
     network = build_network(model_layers)

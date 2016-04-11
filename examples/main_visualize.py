@@ -123,8 +123,6 @@ plt.xlabel('Predicted label')
 plt.show()
 
 
-
-
 net1 = lasagne.layers.get_all_layers(network)
     feat_layer = lasagne.layers.get_output(net1[len(net1)-3])
     input_variable = net1[0].input_var

@@ -11,7 +11,8 @@ def genome_motif_model(shape, num_labels):
 	# create model
 	layer1 = {'layer': 'input',
 			  'input_var': input_var,
-			  'shape': shape
+			  'shape': shape,
+			  'name': 'input'
 			  }
 	layer2 = {'layer': 'convolution', 
 			  'num_filters': 200, 
@@ -20,7 +21,8 @@ def genome_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'activation': 'relu'
+			  'activation': 'relu',
+			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'convolution', 
 			  'num_filters': 300, 
@@ -29,7 +31,8 @@ def genome_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'activation': 'relu'
+			  'activation': 'relu',
+			  'name': 'conv2'
 			  }
 	layer4 = {'layer': 'convolution', 
 			  'num_filters': 300, 
@@ -38,7 +41,8 @@ def genome_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'activation': 'relu'
+			  'activation': 'relu',
+			  'name': 'conv3'
 			  }
 	layer5 = {'layer': 'dense', 
 			  'num_units': 1000, 
@@ -46,13 +50,15 @@ def genome_motif_model(shape, num_labels):
 			  'b': Constant(0.05), 
 			  'dropout': .5,
 			  'norm': 'batch', 
-			  'activation': 'relu'
+			  'activation': 'relu', 
+			  'name': 'dense4'
 			  }
 	layer6 = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'activation': 'sigmoid'
+			  'activation': 'sigmoid', 
+			  'name': 'output'
 			  }
 			  
 	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6]
