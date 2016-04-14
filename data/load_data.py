@@ -21,6 +21,18 @@ def load_data(model_name, filepath, options=[]):
 			class_range = range(918)
 		train, valid, test = DeepSea(filepath, class_range, num_include)
 
+	elif model_name == "Basset":
+		from .Basset import Basset
+		if "num_include" in options:
+			num_include = options["num_include"]
+		else:
+			num_include = []
+		if "class_range" in options:
+			class_range = options["class_range"]
+		else:
+			class_range = range(164)
+		train, valid, test = Basset(filepath, class_range, num_include)
+
 	elif model_name == "MotifSimulation_binary":
 		from .MotifSimulation_binary import MotifSimulation_binary
 		train, valid, test = MotifSimulation_binary(filepath)

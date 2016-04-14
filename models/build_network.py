@@ -55,13 +55,6 @@ def build_network(model_layers):
 			network[newlayer] = layers.BatchNormLayer(network[lastlayer])
 			lastlayer = newlayer
 			
-		# add dropout layer
-		if 'dropout' in model_layer:
-			newlayer = name+'_dropout' # str(counter) + '_' + name+'_dropout'
-			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
-			lastlayer = newlayer
-
-			
 		# add activation layer
 		if 'activation' in model_layer:
 			if name == 'output':
@@ -71,6 +64,11 @@ def build_network(model_layers):
 			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
 			lastlayer = newlayer
 		
+		# add dropout layer
+		if 'dropout' in model_layer:
+			newlayer = name+'_dropout' # str(counter) + '_' + name+'_dropout'
+			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
+			lastlayer = newlayer
 
 		# add max-pooling layer
 		if model_layer['layer'] == 'convolution':  

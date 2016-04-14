@@ -8,14 +8,14 @@ from src import train as fit
 from src import make_directory 
 from models import load_model
 from data import load_data
-np.random.seed(247) # for reproducibility
+#np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
 # load data
 
-name = 'DeepSea'
-datapath = '/home/peter/Data/DeepSea'
-options = {"class_range": range(200,204)}# 
+name = 'Basset' # 'DeepSea'
+datapath = '/home/peter/Data/'+name
+options = {"class_range": range(0,20)}# 
 train, valid, test = load_data(name, datapath, options)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
@@ -23,7 +23,7 @@ num_labels = np.round(train[1].shape[1])
 print "total number of training samples:"
 print train[0].shape
 print "total number of validation samples:"
-print valid[0].shape
+print test[0].shape
 
 print "number of positive training samples for each class:"
 print np.sum(train[1], axis=0)
@@ -36,7 +36,7 @@ print np.sum(test[1], axis=0)
 model_name = "genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
-nnmodel.print_layers()
+#nnmodel.print_layers()
 
 # set output file paths
 outputname = 'binary'
@@ -44,7 +44,7 @@ datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 
 # train model
-batch_size = 128
+batch_size = 256
 nnmodel = fit.train_valid_minibatch(nnmodel, train, test, batch_size, num_epochs=500, patience=10, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error

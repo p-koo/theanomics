@@ -18,40 +18,40 @@ def genome_motif_model(shape, num_labels):
 	layer2 = {'layer': 'convolution', 
 			  'num_filters': 200, 
 			  'filter_size': (8, 1),
-			  'W': GlorotNormal(),
+			  'W': GlorotUniform(),
 			  'b': None,# Constant(0.05),
 			  'batch_norm': 'batch', 
-			  'activation': 'relu',
-			  'pool_size': (3, 1),
+			  'activation': 'prelu',
+			  'pool_size': (4, 1),
 			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'convolution', 
 			  'num_filters': 200, 
 			  'filter_size': (8, 1),
-			  'W': GlorotNormal(),
+			  'W': GlorotUniform(),
 			  'b': None,# Constant(0.05),
 			  'batch_norm': 'batch', 
-			  'activation': 'relu',
+			  'activation': 'prelu',
 			  'pool_size': (4, 1),
 			  'name': 'conv2'
 			  }
 			  
 	layer4 = {'layer': 'convolution', 
 			  'num_filters': 200, 
-			  'filter_size': (7, 1),
-			  'pool_size': (4, 1),
+			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
+			  'b': None, #Constant(0.05),
 			  'batch_norm': 'batch', 
-			  'activation': 'relu',
+			  'activation': 'prelu',
+			  'pool_size': (4, 1),
 			  'name': 'conv3'
 			  }
 			  
 	layer5 = {'layer': 'dense', 
-			  'num_units': 200, 
+			  'num_units': 900, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
-			  'dropout': .3,
+			  'dropout': .1,
 			  'batch_norm': 'batch', 
 			  'activation': 'prelu', 
 			  'name': 'dense1'
@@ -61,6 +61,7 @@ def genome_motif_model(shape, num_labels):
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
+	          'batch_norm': 'batch',
 			  'activation': 'sigmoid', 
 			  'name': 'output'
 			  }
@@ -72,9 +73,11 @@ def genome_motif_model(shape, num_labels):
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam"
-					#"learning_rate": .002,
-					#"momentum": 0.98,
-					#					"weight_norm": 7
+#	                "optimizer": "rmsprop",
+#	                "learning_rate": 0.001,	                
+#	                "rho": .9,
+#	                "epsilon": 1e-6
+#					"weight_norm": 7
 #					"l1": 1e-7,
 #					"l2": 1e-8
 					}
