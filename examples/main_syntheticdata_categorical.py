@@ -25,6 +25,7 @@ num_labels = max(train[1])+1
 # load model parameters
 model_name = "categorical_genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
+nnmodel.print_layers()
 
 # set output file paths
 outputname = 'new'

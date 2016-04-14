@@ -1,88 +1,108 @@
-from matplotlib import plt
+#!/bin/python
+import matplotlib.image as img
+from matplotlib import pyplot as plt
+import theano.tensor as T
+import theano
+from lasagne.layers import get_output
 
 
-
-def plot_sample(x, y, axis):
-    img = x.reshape(96, 96)
-    axis.imshow(img, cmap='gray')
-    if y is not None:
-        axis.scatter(y[0::2] * 48 + 48, y[1::2] * 48 + 48, marker='x', s=10)
-
-
-# plot loss 
 def plot_loss(loss):
     """Plot trainig/validation/test loss during training"""
 
     fig = plt.figure()
     num_data_types = len(loss)
     if num_data_types == 2:
-        plt.plot(loss[0], label='train loss')
-        plt.plot(loss[1], label='valid loss')
+        plt.plot(loss[0], label='train loss', linewidth=2)
+        plt.plot(loss[1], label='valid loss', linewidth=2)
     elif num_data_types == 3:
-        plt.plot(loss[0], label='train loss')
-        plt.plot(loss[1], label='valid loss')
-        plt.plot(loss[2], label='test loss')
+        plt.plot(loss[0], label='train loss', linewidth=2)
+        plt.plot(loss[1], label='valid loss', linewidth=2)
+        plt.plot(loss[2], label='test loss', linewidth=2)
 
-        plt.xlabel('epoch')
-        plt.ylabel('loss')
-        plt.legend(loc='best')
-        plt.show()
-    return plt
+    plt.xlabel('epoch', fontsize=22)
+    plt.ylabel('loss', fontsize=22)
+    plt.legend(loc='best', frameon=False, fontsize=18)
+	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+	plt.tight_layout()
+    return fig, plt
+
+
+def plot_roc_all(final_roc):
+    """Plot ROC curve for each class"""
+
+    fig = plt.figure()
+    for i in range(len(final_roc)):
+        plt.plot(final_roc[i][0],final_roc[i][1])
+    plt.xlabel('False positive rate', fontsize=22)
+    plt.ylabel('True positive rate', fontsize=22)
+    plt.plot([0, 1],[0, 1],'k--')
+    ax = plt.gca()
+	ax.xaxis.label.set_fontsize(17)
+	ax.yaxis.label.set_fontsize(17)
+	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+	plt.tight_layout()
+    #plt.legend(loc='best', frameon=False, fontsize=14)
+    return fig, plt
+
+
+def plot_pr_all(final_pr):
+    """Plot PR curve for each class"""
+
+    fig = plt.figure()
+    for i in range(len(final_roc)):
+        plt.plot(final_pr[i][0],final_pr[i][1])
+    plt.xlabel('Recall', fontsize=22)
+    plt.ylabel('Product', fontsize=22)
+    plt.plot([0, 1],[0, 1],'k--')
+    ax = plt.gca()
+	ax.xaxis.label.set_fontsize(17)
+	ax.yaxis.label.set_fontsize(17)
+	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+	plt.tight_layout()
+    #plt.legend(loc='best', frameon=False, fontsize=14)
+    return fig, plt
 
 
 def plot_conv_weights(layer, figsize=(6, 6)):
     """nolearn's plot the weights of a specific layer"""
 
-    fig = plt.figure()
-    W = layer.W.get_value()
+    W =  np.squeeze(layer.W.get_value())
     shape = W.shape
     nrows = np.ceil(np.sqrt(shape[0])).astype(int)
     ncols = nrows
 
-    for feature_map in range(shape[1]):
-        figs, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    figs, axes = plt.subplots(nrows, ncols, figsize=figsize,frameon=False)
 
-        for ax in axes.flatten():
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.axis('off')
+    for ax in axes.flatten():
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.axis('off')
 
-        for i, (r, c) in enumerate(product(range(nrows), range(ncols))):
-            if i >= shape[0]:
-                break
-            axes[r, c].imshow(W[i, feature_map], cmap='gray',
-                              interpolation='nearest')
+    for i, ax in enumerate(axes.ravel()):
+        if i >= shape[0]:
+            break
+        im = ax.imshow(W[i], cmap='gray', interpolation='nearest')
+
+    return figs, axes
+
+
+def plot_weights(weights):
+    fig = plt.figure(figsize=(6, 6))
+    plt.imshow(weights.T, cmap='gray')
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
     return plt
 
 
-def plot_weights(weights):
-    fig = pyplot.figure(figsize=(6, 6))
-    fig.subplots_adjust(
-        left=0, right=1, bottom=0, top=1, hspace=0.05, wspace=0.05)
-
-    for i in range(16):
-        ax = fig.add_subplot(4, 4, i + 1, xticks=[], yticks=[])
-        ax.imshow(weights[:, i].reshape(96, 96), cmap='gray')
-    pyplot.show()
-
-
-
-
-def plot_conv_activity(layer, x, figsize=(6, 8)):
+def plot_conv_activity(activity, figsize=(6, 8)):
     """nolearn's plot the acitivities of a specific layer.
         x : numpy.ndarray (1 data point) """
 
     fig = plt.figure()
-
-    # compile theano function
-    input_var = T.tensor4('input').astype(theano.config.floatX)
-    get_activity = theano.function([input_var], get_output(layer, input_var))
-
-    # get activation info
-    activity = get_activity(x)
-
-    # reshape 
     shape = activity.shape
     nrows = np.ceil(np.sqrt(shape[1])).astype(int)
     ncols = nrows
@@ -96,18 +116,27 @@ def plot_conv_activity(layer, x, figsize=(6, 8)):
         ax.set_yticks([])
         ax.axis('off')
 
-    for i, (r, c) in enumerate(product(range(nrows), range(ncols))):
+    for i, ax in enumerate(axes.ravel()):    
         if i >= shape[1]:
             break
         ndim = activity[0][i].ndim
         if ndim != 2:
             raise ValueError("Wrong number of dimensions, image data should "
                              "have 2, instead got {}".format(ndim))
-        axes[r + 1, c].imshow(-activity[0][i], cmap='gray',
-                              interpolation='nearest')
+        ax.imshow(-activity[0][i], cmap='gray', interpolation='nearest')
+
     plt.show()
     return plt
 
+
+
+
+
+
+
+
+
+"""
 
 def occlusion_heatmap(net, x, target, square_length=7):
     """An occlusion test that checks an image for its critical parts.
@@ -177,6 +206,36 @@ def occlusion_heatmap(net, x, target, square_length=7):
     return heat_array
 
 
+def _plot_heat_map(net, X, figsize, get_heat_image):
+    if (X.ndim != 4):
+        raise ValueError("This function requires the input data to be of "
+                         "shape (b, c, x, y), instead got {}".format(X.shape))
+
+    num_images = X.shape[0]
+    if figsize[1] is None:
+        figsize = (figsize[0], num_images * figsize[0] / 3)
+    figs, axes = plt.subplots(num_images, 3, figsize=figsize)
+
+    for ax in axes.flatten():
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.axis('off')
+
+    for n in range(num_images):
+        heat_img = get_heat_image(net, X[n:n + 1, :, :, :], n)
+
+        ax = axes if num_images == 1 else axes[n]
+        img = X[n, :, :, :].mean(0)
+        ax[0].imshow(-img, interpolation='nearest', cmap='gray')
+        ax[0].set_title('image')
+        ax[1].imshow(-heat_img, interpolation='nearest', cmap='Reds')
+        ax[1].set_title('critical parts')
+        ax[2].imshow(-img, interpolation='nearest', cmap='gray')
+        ax[2].imshow(-heat_img, interpolation='nearest', cmap='Reds',
+                     alpha=0.6)
+        ax[2].set_title('super-imposed')
+    return plt
+
 
 def plot_occlusion(net, X, target, square_length=7, figsize=(9, None)):
     """Plot which parts of an image are particularly import for the
@@ -205,3 +264,17 @@ def plot_occlusion(net, X, target, square_length=7, figsize=(9, None)):
     and both images super-imposed.
     """
     return _plot_heat_map(net, X, figsize, lambda net, X, n: occlusion_heatmap(net, X, target[n], square_length))
+
+
+"""
+
+
+
+
+
+
+
+
+
+
+

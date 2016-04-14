@@ -71,13 +71,22 @@ class NeuralNet:
 		f.close()
 
 
-	def set_best_model_parameters(self, filepath):
-		min_cost, min_index = self.valid_monitor.get_min_cost()    
-		savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
+	def set_parameters_from_file(self, savepath):
+		self.reinitialize()
+
+		# load model parameters for a given training epoch
 		f = open(savepath, 'rb')
 		best_parameters = cPickle.load(f)
+		f.close()
+
+		# get test metrics 
 		self.set_model_parameters(best_parameters)
-		
+
+
+	def get_min_cost(self):
+
+		min_cost, min_index = self.valid_monitor.get_min_cost()
+		return min_cost, min_index    
 
 	def test_step_batch(self, test):
 		test_cost, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
@@ -89,10 +98,11 @@ class NeuralNet:
 		performance = MonitorPerformance()
 
 		if np.ndim(test[1]) == 2:
-			label = np.empty(test[1].shape[1])
+			label = np.empty((1,test[1].shape[1]))
+			prediction = np.empty((1,test[1].shape[1]))
 		else:
 			label = np.empty(1)
-		prediction = np.empty((1,max(test[1])+1))
+			prediction = np.empty((1,max(test[1])+1))
 
 		num_batches = test[1].shape[0] // batch_size
 		batches = batch_generator(test[0], test[1], batch_size)
@@ -156,7 +166,28 @@ class NeuralNet:
 
 	def get_num_epochs(self):
 		return self.train_monitor.get_length()
+		
 
+	def print_layers(self):
+		all_layers = layers.get_all_layers(self.network['output'])
+		print '----------------------------------------------------------------------------'
+		print 'Network architecture:'
+		print '----------------------------------------------------------------------------'
+		counter = 1
+		for layer in all_layers:
+			output_shape = layer.output_shape
+			params = layer.get_params()
+
+			print 'layer'+str(counter) + ': '
+			print str(layer)
+			print 'shape:' +  str(output_shape)
+			if params:
+				all_params = ''
+				for param in params:
+					all_params += str(param) + ', '
+				print 'parameters: ' + str(all_params[0:-2])
+			counter += 1
+		print '----------------------------------------------------------------------------'
 
 #----------------------------------------------------------------------------------------------------
 # Monitor performance metrics class
@@ -277,11 +308,11 @@ class MonitorPerformance():
 
 def build_optimizer(network, input_var, target_var, optimization):
 	# build cost function
-	prediction = layers.get_output(network["output"], deterministic=False)
-	cost = build_cost(network, target_var, prediction, optimization)
+	prediction = layers.get_output(network['output'], deterministic=False)
+	cost = build_cost(network['output'], target_var, prediction, optimization)
 
 	# calculate and clip gradients
-	params = layers.get_all_params(network["output"], trainable=True)    
+	params = layers.get_all_params(network['output'], trainable=True)    
 	if "weight_norm" in optimization:
 		grad = calculate_gradient(cost, params, weight_norm=optimization["weight_norm"])
 	else:
@@ -291,8 +322,8 @@ def build_optimizer(network, input_var, target_var, optimization):
 	update_op = build_updates(grad, params, optimization)
 
 	# test/validation set 
-	test_prediction = layers.get_output(network["output"], deterministic=True)
-	test_cost = build_cost(network, target_var, test_prediction, optimization)
+	test_prediction = layers.get_output(network['output'], deterministic=True)
+	test_cost = build_cost(network['output'], target_var, test_prediction, optimization)
 
 	# create theano function
 	train_fun = theano.function([input_var, target_var], [cost, prediction], updates=update_op)

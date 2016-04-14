@@ -82,3 +82,25 @@ def calculate_metrics(label, prediction):
 	
 	return mean, std, roc, pr
 
+
+def get_performance(savepath):
+    with open(savepath, 'rb') as f:
+        name = cPickle.load(f)
+        cost = cPickle.load(f)
+        metric = cPickle.load(f)
+        metric_std = cPickle.load(f)
+        roc = cPickle.load(f)
+        pr = cPickle.load(f)
+    return cost, metric, metric_std, roc, pr
+
+
+def get_layer_activity(layer, x):
+
+    # compile theano function
+    input_var = T.tensor4('input').astype(theano.config.floatX)
+    get_activity = theano.function([input_var], get_output(layer, input_var))
+
+    # get activation info
+    activity = get_activity(x)
+
+    return activity

@@ -6,7 +6,7 @@ import h5py
 import scipy.io
 from six.moves import cPickle
 	
-def DeepSea(filepath, num_include=4400000, class_range=range(918)):
+def DeepSea(filepath, class_range=range(918), num_include=[]):
 	"""Loads DeepSea dataset"""
 	
 	def data_subset(y, class_range, negative=True):
@@ -27,9 +27,10 @@ def DeepSea(filepath, num_include=4400000, class_range=range(918)):
 	print "loading training data"
 	trainmat = h5py.File(os.path.join(filepath,'train.mat'))
 	y_train = np.array(trainmat['traindata']).T
+	index = data_subset(y_train, class_range, negative=False)
+	if num_include:
+		index = index[0:num_include]
 	y_train = y_train[:,class_range]
-	index = data_subset(y_train, class_range)
-	index = index[0:num_include]
 	y_train = y_train[index,:]
 	X_train = np.transpose(np.array(trainmat['trainxdata']), axes=(2,1,0))
 	X_train = X_train[index,:,:]
@@ -39,8 +40,8 @@ def DeepSea(filepath, num_include=4400000, class_range=range(918)):
 	print "loading validation data"  
 	validmat = scipy.io.loadmat(os.path.join(filepath,'valid.mat'))
 	y_valid = validmat['validdata']
-	y_valid = y_valid[:, class_range]
 	index = data_subset(y_valid,class_range, negative=False)
+	y_valid = y_valid[:, class_range]
 	y_valid = y_valid[index,:]
 	X_valid = np.transpose(validmat['validxdata'],axes=(0,1,2)) 
 	X_valid = X_valid[index,:,:]
@@ -50,8 +51,8 @@ def DeepSea(filepath, num_include=4400000, class_range=range(918)):
 	print "loading test data"
 	testmat = scipy.io.loadmat(os.path.join(filepath,'test.mat'))
 	y_test = testmat['testdata']
-	y_test = y_test[:, class_range]
 	index = data_subset(y_test,class_range, negative=False)
+	y_test = y_test[:, class_range]
 	y_test = y_test[index,:]
 	X_test = np.transpose(testmat['testxdata'],axes=(0,1,2))
 	X_test = X_test[index,:,:]

@@ -10,23 +10,23 @@ def load_data(model_name, filepath, options=[]):
 
 	# load and build model parameters
 	if model_name == "DeepSea":
-		from .DeepSea import *
+		from .DeepSea import DeepSea
 		if "num_include" in options:
 			num_include = options["num_include"]
 		else:
-			num_include = 4400000
+			num_include = []
 		if "class_range" in options:
 			class_range = options["class_range"]
 		else:
 			class_range = range(918)
-		train, valid, test = DeepSea(filepath, num_include, class_range)
+		train, valid, test = DeepSea(filepath, class_range, num_include)
 
 	elif model_name == "MotifSimulation_binary":
-		from .MotifSimulation_binary import *
+		from .MotifSimulation_binary import MotifSimulation_binary
 		train, valid, test = MotifSimulation_binary(filepath)
 
 	elif model_name == "MotifSimulation_categorical":
-		from .MotifSimulation_categorical import * 
+		from .MotifSimulation_categorical import MotifSimulation_categorical 
 		train, valid, test = MotifSimulation_categorical(filepath)
 
 

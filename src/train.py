@@ -93,17 +93,11 @@ def test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath):
 	for epoch in range(num_train_epochs):
 		sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_train_epochs))
 
-		# build a new neural network
-		nnmodel.reinitialize()
-
 		# load model parameters for a given training epoch
 		savepath = filepath + "_epoch_" + str(epoch) + ".pickle"
-		f = open(savepath, 'rb')
-		best_parameters = cPickle.load(f)
-		f.close()
+		nnmodel.set_parameters_from_file(savepath)
 
 		# get test metrics 
-		nnmodel.set_model_parameters(best_parameters)
 		test_cost, test_prediction, test_label = nnmodel.test_step_minibatch(test, batch_size)
 		performance.update(test_cost, test_prediction, test_label)
 		performance.print_results(" test") 

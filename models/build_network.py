@@ -1,7 +1,7 @@
 #/bin/python
 from lasagne import layers, nonlinearities, init
 
-def build_network(model_layers, name=[]):
+def build_network(model_layers):
 	""" build all layers in the model """
 
 	def single_layer(model_layer, network_last):
@@ -21,43 +21,63 @@ def build_network(model_layers, name=[]):
 		elif model_layer['layer'] == 'convolution':
 			network = layers.Conv2DLayer(network_last, num_filters=model_layer['num_filters'],
 												  filter_size=model_layer['filter_size'],
-											 	  W=model_layer['W'],
-										   		  b=model_layer['b'])
+												  W=model_layer['W'],
+												  b=model_layer['b'])
 		return network
 
 	# loop to build each layer of network
+
 	network = {}
-	lastname = ''
+	lastlayer = ''
 	for model_layer in model_layers:
 		name = model_layer['name']
 
 		if name == "input":
 			network[name] = single_layer(model_layer, network)
-			lastname = name
+			lastlayer = name
+			counter = 1
 		else:
-			network[name] = single_layer(model_layer, network[lastname])
-			lastname = name
+			newlayer = name #'# str(counter) + '_' + name + '_batch'
+			network[newlayer] = single_layer(model_layer, network[lastlayer])
+			lastlayer = newlayer
+			counter += 1
 				
-		# add Batch normalization layer
-		if 'norm' in model_layer:
-			if model_layer['norm'] == 'batch':
-				network[name+'_batch'] = layers.BatchNormLayer(network[lastname])
-				lastname = name+'_batch'
 
-		# add activation layer
-		if 'activation' in model_layer:
-			network[name] = activation_layer(network[lastname], model_layer['activation']) 
-			lastname = name
+		if 'local_norm' in model_layer:
+			newlayer = name + '_local' # str(counter) + '_' + name + '_local'
+			network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer])
+			lastlayer = newlayer
+
+			
+		# add Batch normalization layer
+		if 'batch_norm' in model_layer:
+			newlayer = name + '_batch' #str(counter) + '_' + name + '_batch'
+			network[newlayer] = layers.BatchNormLayer(network[lastlayer])
+			lastlayer = newlayer
 			
 		# add dropout layer
 		if 'dropout' in model_layer:
-			network[name+'_dropout'] = layers.DropoutLayer(network[lastname], p=model_layer['dropout'])
-			lastname = name+'_dropout'
+			newlayer = name+'_dropout' # str(counter) + '_' + name+'_dropout'
+			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
+			lastlayer = newlayer
+
+			
+		# add activation layer
+		if 'activation' in model_layer:
+			if name == 'output':
+				newlayer = name
+			else:
+				newlayer = name+'_active'
+			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
+			lastlayer = newlayer
+		
 
 		# add max-pooling layer
 		if model_layer['layer'] == 'convolution':  
-			network[name+'_pool'] = layers.MaxPool2DLayer(network[lastname], pool_size=model_layer['pool_size'])
-			lastname = name+'_pool'          
+			newlayer = name+'_pool'  # str(counter) + '_' + name+'_pool' 
+			network[newlayer] = layers.MaxPool2DLayer(network[lastlayer], pool_size=model_layer['pool_size'])
+			lastlayer = newlayer       
+			counter += 1
 
 	return network
 

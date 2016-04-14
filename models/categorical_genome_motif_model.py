@@ -20,8 +20,8 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
 	          'b': None,
-#	          'norm': 'batch', 
-	          'activation': 'prelu',
+	          'norm': 'batch', 
+	          'activation': 'relu',
 	          'pool_size': (4, 1),
   			  'name': 'conv1'
   			  }
@@ -31,24 +31,22 @@ def categorical_genome_motif_model(shape, num_labels):
 	          'W': GlorotUniform(),
 	          'b': None,
 	          'dropout': .2,
-#	          'norm': 'batch', 
-	          'activation': 'prelu',
+	          'norm': 'batch', 
+	          'activation': 'relu',
 	          'pool_size': (4, 1),
   			  'name': 'conv2'
   			  }
 	layer4 = {'layer': 'dense', 
-	          'num_units': 200, 
-	          'default': True,
+	          'num_units': 100, 
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05), 
 	          'dropout': .5,
-#	          'norm': 'batch',
+	          'norm': 'batch',
 	          'activation': 'prelu',
-  			  'name': 'dense3'
+  			  'name': 'dense'
   			  }
 	layer5 = {'layer': 'dense', 
 	          'num_units': num_labels, 
-	          'default': True,
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
 	          'activation': 'softmax',
