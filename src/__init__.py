@@ -11,6 +11,7 @@ from .utils import make_directory
 from .utils import one_hot_labels
 from .utils import calculate_metrics
 from .utils import batch_generator
+from .utils import load_JASPAR_motifs
 
 
 __all__ = ['NeuralNet', 
@@ -21,7 +22,8 @@ __all__ = ['NeuralNet',
            'calculate_metrics',
            'train_minibatch',
            'test_model_all',
-           'train_valid_minibatch'
+           'train_valid_minibatch',
+           'load_JASPAR_motifs'
            ]
 
 

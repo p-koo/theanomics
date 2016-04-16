@@ -12,7 +12,7 @@ from data import load_data
 
 #------------------------------------------------------------------------------
 # load data
-
+"""
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
 options = {"class_range": range(1,50)}# 
@@ -31,22 +31,43 @@ print "number of positive training samples for each class:"
 print np.sum(train[1], axis=0)
 print "number of positive validation samples for each class:"
 print np.sum(valid[1], axis=0)
+"""
+
+name = 'MotifSimulation_binary'
+datapath = '/home/peter/Data/SequenceMotif'
+filepath = os.path.join(datapath, 'N=500000_S=200_M=10_G=20_data.pickle')
+train, valid, test = load_data(name, filepath)
+shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
+num_labels = np.round(train[1].shape[1])
 
 #-------------------------------------------------------------------------------------
 
-# load model parameters
-model_name = "genome_motif_model"
+
+# build model
+model_name = "jaspar_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
 #nnmodel.print_layers()
+params = nnmodel.get_model_parameters()
 
 # set output file paths
+outputname = 'binary'
 datapath = make_directory(datapath, 'Results')
-filepath = os.path.join(datapath, model_name)
+filepath = os.path.join(datapath, outputname)
 
 # train model
 batch_size = 128
-nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=10, verbose=1, filepath=filepath)
+nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=5, patience=5, verbose=1, filepath=filepath)
+
+model_parameters = nnmodel.get_model_parameters()
+print params[0].shape
+print model_parameters[0].shape
+print np.sum(params[0] == model_parameters[0])
+
+model_name = "jaspar_motif_model2"
+nnmodel = NeuralNet(model_name, shape, num_labels)
+nnmodel.set_model_parameters(model_parameters)
+nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=100, patience=10, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
 min_cost, min_index = nnmodel.get_min_cost()
@@ -71,6 +92,10 @@ performance = fit.test_model_all(nnmodel, test, batch_size, num_train_epochs, fi
 # save test performance
 performance.save_metrics(filepath)
 
+model_parameters = nnmodel.get_model_parameters()
+print params[0].shape
+print model_parameters[0].shape
+print np.sum(params[0] == model_parameters[0])
 
 
 

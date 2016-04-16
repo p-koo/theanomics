@@ -19,18 +19,18 @@ def genome_motif_model(shape, num_labels):
 			  'num_filters': 200, 
 			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
-			  'b': None,# Constant(0.05),
+			  'b': Constant(0.05),
 			  'batch_norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
+			  #'pool_size': (4, 1),
 			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'convolution', 
 			  'num_filters': 200, 
 			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
-			  'b': None,# Constant(0.05),
-			  'batch_norm': 'batch', 
+			  'b': Constant(0.05),
+			  #'batch_norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (4, 1),
 			  'name': 'conv2'
@@ -40,33 +40,44 @@ def genome_motif_model(shape, num_labels):
 			  'num_filters': 200, 
 			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
-			  'b': None, #Constant(0.05),
+			  'b': Constant(0.05),
+			  'batch_norm': 'batch', 
+			  'activation': 'prelu',
+			  #'pool_size': (4, 1),
+			  'name': 'conv1'
+			  }
+  	layer5 = {'layer': 'convolution', 
+			  'num_filters': 200, 
+			  'filter_size': (8, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
 			  'batch_norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (4, 1),
 			  'name': 'conv3'
 			  }
 			  
-	layer5 = {'layer': 'dense', 
-			  'num_units': 900, 
+	layer6 = {'layer': 'dense', 
+			  'num_units': 1000, 
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05), 
-			  'dropout': .1,
+			  'b': None, #Constant(0.05), 
 			  'batch_norm': 'batch', 
 			  'activation': 'prelu', 
+			  'dropout': .1,
 			  'name': 'dense1'
 			  }
+
 
   	layer7 = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
+			  'b': None, #Constant(0.05),
 	          'batch_norm': 'batch',
 			  'activation': 'sigmoid', 
 			  'name': 'output'
 			  }
 			  
-	model_layers = [layer1, layer2, layer3, layer4, layer5, layer7]
+	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6, layer7]
 	network = build_network(model_layers)
 
 

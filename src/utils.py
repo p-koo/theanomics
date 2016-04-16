@@ -79,7 +79,10 @@ def calculate_metrics(label, prediction):
 	auc_pr, pr = pr_metrics(label, prediction)
 	mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
 	std = [np.std(accuracy), np.std(auc_roc), np.std(auc_pr)]
-	
+	print "ROC"
+	print auc_roc
+	print "PR"
+	print auc_pr
 	return mean, std, roc, pr
 
 
@@ -104,3 +107,39 @@ def get_layer_activity(layer, x):
     activity = get_activity(x)
 
     return activity
+
+
+
+def load_JASPAR_motifs(jaspar_path, MAX):
+
+	with open(jaspar_path, 'rb') as f: 
+	    jaspar_motifs = cPickle.load(f)
+
+	motifs = []
+	for jaspar in jaspar_motifs:
+		length = len(jaspar)
+		print length
+		if length < MAX:
+			offset = MAX - length
+			firstpart = offset // 2
+			secondpart = offset - firstpart
+			matrix = np.vstack([np.ones((firstpart,4))*.25, jaspar,  np.ones((secondpart,4))*.25])
+			motifs.append(matrix)
+
+		elif length > MAX:
+			offset = length - MAX
+			firstpart = offset // 2
+			secondpart = offset - firstpart
+			matrix = jaspar[0+firstpart:length-secondpart,:]
+			motifs.append(matrix)
+
+		elif length == MAX:
+			motifs.append(jaspar)
+
+	motifs = np.array(motifs)
+	motifs = np.expand_dims(np.transpose(motifs, (0,2,1)), axis=3)
+
+	return motifs
+
+
+

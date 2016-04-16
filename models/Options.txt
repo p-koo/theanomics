@@ -116,11 +116,16 @@ Example:
 		- 'momentum': momentum (default=0.9)
     	- 'adagrad'
         optional parameters
-	    	- 'learning_rate': learning_rate (default=1.0)
+	    	- 'learning_rate': 0.01 (default=1.0)
+	    	- 'epsilon': 1e-06
+	- 'adadelta'
+	optional parameters
+		- 'learning_rate': (default=1.0)
+		- 'rho': 0.95
 	    	- 'epsilon': 1e-06
     	- 'rmsprop'
     	optional parameters
-            - 'learning_rate': learning_rate (default=1.0)
+            - 'learning_rate': 0.001 (default=1.0)
             - 'rho': rho (default=0.9) 
             - 'epsilon': epsilon (default=1e-06)
     	- 'adam'

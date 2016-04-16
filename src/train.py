@@ -105,7 +105,3 @@ def test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath):
 	return performance
 
 
-
-
-
-

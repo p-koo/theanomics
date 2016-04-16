@@ -15,14 +15,16 @@ def build_network(model_layers):
 		elif model_layer['layer'] == 'dense':
 			network = layers.DenseLayer(network_last, num_units=model_layer['num_units'],
 												 W=model_layer['W'],
-												 b=model_layer['b'])
+												 b=model_layer['b'],
+												 nonlinearity=None)
 
 		# convolution layer
 		elif model_layer['layer'] == 'convolution':
 			network = layers.Conv2DLayer(network_last, num_filters=model_layer['num_filters'],
 												  filter_size=model_layer['filter_size'],
 												  W=model_layer['W'],
-												  b=model_layer['b'])
+												  b=model_layer['b'],
+												  nonlinearity=None)
 		return network
 
 	# loop to build each layer of network
@@ -71,11 +73,10 @@ def build_network(model_layers):
 			lastlayer = newlayer
 
 		# add max-pooling layer
-		if model_layer['layer'] == 'convolution':  
+		if 'pool_size' == model_layer:  
 			newlayer = name+'_pool'  # str(counter) + '_' + name+'_pool' 
 			network[newlayer] = layers.MaxPool2DLayer(network[lastlayer], pool_size=model_layer['pool_size'])
 			lastlayer = newlayer       
-			counter += 1
 
 	return network
 
