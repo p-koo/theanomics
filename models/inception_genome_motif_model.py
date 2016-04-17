@@ -83,14 +83,18 @@ def inception_genome_motif_model(shape, num_labels):
 
     # inception module on genome
     net['incept1'] = inception_module(net['input'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
-    net['pool1'] = PoolLayer(net['incept1'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
-
+    
     # inception module on motifs
-    net['incept2'] = inception_module(net['pool1'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
+    net['incept2'] = inception_module(net['incept1'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
     net['pool2'] = PoolLayer(net['incept2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
 
-    # 
-    net['dense6'] = DenseLayer(net['pool2'], num_units=200, W=GlorotUniform(), b=None, nonlinearity=None)
+    net['conv2'] = ConvLayer(net['pool2'], num_filters=300, filter_size=(8, 1), stride=(1, 1),
+                                           W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
+    net['batch2'] = BatchNormLayer(net['conv2'], epsilon=0.001)
+    net['active2'] = NonlinearityLayer(net['batch2'], leaky_rectify)
+    net['pool3'] = PoolLayer(net['active2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
+
+    net['dense6'] = DenseLayer(net['pool3'], num_units=300, W=GlorotUniform(), b=None, nonlinearity=None)
     net['batch6'] = BatchNormLayer(net['dense6'], epsilon=0.001)
     net['active6'] = ParametricRectifierLayer(net['batch6'], alpha=Constant(0.25), shared_axes='auto')
 

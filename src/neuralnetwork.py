@@ -83,14 +83,14 @@ class NeuralNet:
 		self.set_model_parameters(best_parameters)
 
 
-	def get_min_cost(self):
+	def get_min_loss(self):
 
-		min_cost, min_index = self.valid_monitor.get_min_cost()
-		return min_cost, min_index    
+		min_loss, min_index = self.valid_monitor.get_min_loss()
+		return min_loss, min_index    
 
 	def test_step_batch(self, test):
-		test_cost, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
-		return test_cost, test_prediction
+		test_loss, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
+		return test_loss, test_prediction
 
 
 	def test_step_minibatch(self, test, batch_size):
@@ -108,13 +108,13 @@ class NeuralNet:
 		batches = batch_generator(test[0], test[1], batch_size)
 		for epoch in range(num_batches):
 			X, y = next(batches)
-			cost, prediction_minibatch = self.test_fun(X, y)
+			loss, prediction_minibatch = self.test_fun(X, y)
 
-			performance.add_cost(cost)
+			performance.add_loss(loss)
 			prediction = np.concatenate((prediction, prediction_minibatch), axis=0)
 			label = np.concatenate((label, y), axis=0)
 
-		return performance.get_mean_cost(), prediction[1::], label[1::]
+		return performance.get_mean_loss(), prediction[1::], label[1::]
 		
 
 	def train_step(self,  train, batch_size, verbose=1):        
@@ -129,23 +129,23 @@ class NeuralNet:
 		batches = batch_generator(train[0], train[1], batch_size)
 		for epoch in range(num_batches):
 			X, y = next(batches)
-			cost, prediction = self.train_fun(X, y)
-			performance.add_cost(cost)
+			loss, prediction = self.train_fun(X, y)
+			performance.add_loss(loss)
 			performance.progress_bar(epoch+1., num_batches)
 		print "" 
-		return performance.get_mean_cost()
+		return performance.get_mean_loss()
 
 
 	def test_model(self, test, batch_size, name):
-		test_cost, test_prediction, test_label = self.test_step_minibatch(test, batch_size)
+		test_loss, test_prediction, test_label = self.test_step_minibatch(test, batch_size)
 		if name == "train":
-			self.train_monitor.update(test_cost, test_prediction, test_label)
+			self.train_monitor.update(test_loss, test_prediction, test_label)
 			self.train_monitor.print_results(name)
 		if name == "valid":
-			self.valid_monitor.update(test_cost, test_prediction, test_label)
+			self.valid_monitor.update(test_loss, test_prediction, test_label)
 			self.valid_monitor.print_results(name)
 		if name == "test":
-			self.test_monitor.update(test_cost, test_prediction, test_label)
+			self.test_monitor.update(test_loss, test_prediction, test_label)
 			self.test_monitor.print_results(name)
 
 
@@ -198,7 +198,7 @@ class MonitorPerformance():
 	   training. This class uses the metrics for early stopping. """
 
 	def __init__(self, name = '', verbose=1):
-		self.cost = []
+		self.loss = []
 		self.metric = np.zeros(3)
 		self.metric_std = np.zeros(3)
 		self.verbose = verbose
@@ -211,8 +211,8 @@ class MonitorPerformance():
 		self.verbose = verbose
 
 
-	def add_cost(self, cost):
-		self.cost = np.append(self.cost, cost)
+	def add_loss(self, loss):
+		self.loss = np.append(self.loss, loss)
 
 
 	def add_metrics(self, mean, std):
@@ -223,17 +223,17 @@ class MonitorPerformance():
 
 
 	def get_length(self):
-		return len(self.cost)
+		return len(self.loss)
 
-	def update(self, cost, prediction, label):
+	def update(self, loss, prediction, label):
 		mean, std, roc, pr = calculate_metrics(label, prediction)
-		self.add_cost(cost)
+		self.add_loss(loss)
 		self.add_metrics(mean, std)
 		self.roc = roc
 		self.pr = pr
 
-	def get_mean_cost(self):
-		return np.mean(self.cost)
+	def get_mean_loss(self):
+		return np.mean(self.loss)
 
 	def get_mean_values(self):
 		results = self.metric[-1,:]
@@ -245,16 +245,16 @@ class MonitorPerformance():
 		return results[0], results[1], results[2]
 
 
-	def get_min_cost(self):
-		min_cost = min(self.cost)
-		min_index = np.argmin(self.cost)
-		return min_cost, min_index
+	def get_min_loss(self):
+		min_loss = min(self.loss)
+		min_index = np.argmin(self.loss)
+		return min_loss, min_index
 
 
-	def early_stopping(self, current_cost, current_epoch, patience):
-		min_cost, min_epoch = self.get_min_cost()
+	def early_stopping(self, current_loss, current_epoch, patience):
+		min_loss, min_epoch = self.get_min_loss()
 		status = True
-		if min_cost < current_cost:
+		if min_loss < current_loss:
 			if patience - (current_epoch - min_epoch) < 0:
 				status = False
 				print "Patience ran out... Early stopping."
@@ -268,7 +268,7 @@ class MonitorPerformance():
 
 	def print_results(self, name): 
 		if self.verbose == 1:
-			print("  " + name + " cost:\t\t{:.4f}".format(self.cost[-1]/1.))
+			print("  " + name + " loss:\t\t{:.4f}".format(self.loss[-1]/1.))
 			if self.metric.any():
 				accuracy, auc_roc, auc_pr = self.get_mean_values()
 				accuracy_std, auc_roc_std, auc_pr_std = self.get_error_values()
@@ -283,8 +283,8 @@ class MonitorPerformance():
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- cost=%.5f     " \
-			%(progress+spaces, percent*100, remaining_time, self.get_mean_cost()))
+			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f     " \
+			%(progress+spaces, percent*100, remaining_time, self.get_mean_loss()))
 			sys.stdout.flush()
 
 
@@ -294,7 +294,7 @@ class MonitorPerformance():
 
 		f = open(savepath, 'wb')
 		cPickle.dump(self.name, f, protocol=cPickle.HIGHEST_PROTOCOL)
-		cPickle.dump(self.cost, f, protocol=cPickle.HIGHEST_PROTOCOL)
+		cPickle.dump(self.loss, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.metric, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.metric_std, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.roc, f, protocol=cPickle.HIGHEST_PROTOCOL)
@@ -307,61 +307,62 @@ class MonitorPerformance():
 #------------------------------------------------------------------------------------------
 
 def build_optimizer(network, input_var, target_var, optimization):
-	# build cost function
+	# build loss function
 	prediction = layers.get_output(network['output'], deterministic=False)
-	cost = build_cost(network['output'], target_var, prediction, optimization)
+	loss = build_loss(network['output'], target_var, prediction, optimization)
 
 	# calculate and clip gradients
 	params = layers.get_all_params(network['output'], trainable=True)    
 	if "weight_norm" in optimization:
-		grad = calculate_gradient(cost, params, weight_norm=optimization["weight_norm"])
+		grad = calculate_gradient(loss, params, weight_norm=optimization["weight_norm"])
 	else:
-		grad = calculate_gradient(cost, params)
+		grad = calculate_gradient(loss, params)
 	  
 	# setup parameter updates
 	update_op = build_updates(grad, params, optimization)
 
 	# test/validation set 
 	test_prediction = layers.get_output(network['output'], deterministic=True)
-	test_cost = build_cost(network['output'], target_var, test_prediction, optimization)
+	test_loss = build_loss(network['output'], target_var, test_prediction, optimization)
 
 	# create theano function
-	train_fun = theano.function([input_var, target_var], [cost, prediction], updates=update_op)
-	test_fun = theano.function([input_var, target_var], [test_cost, test_prediction])
+	train_fun = theano.function([input_var, target_var], [loss, prediction], updates=update_op)
+	test_fun = theano.function([input_var, target_var], [test_loss, test_prediction])
 
 	return train_fun, test_fun
 
 
-def build_cost(network, target_var, prediction, optimization):
-	""" setup cost function with weight decay regularization """
+def build_loss(network, target_var, prediction, optimization):
+	""" setup loss function with weight decay regularization """
 
 	if optimization["objective"] == 'categorical':
-		cost = objectives.categorical_crossentropy(prediction, target_var)
+		loss = objectives.categorical_crossentropy(prediction, target_var)
 
 	elif optimization["objective"] == 'binary':
-		cost = objectives.binary_crossentropy(prediction, target_var)
+		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
+		#loss = objectives.binary_crossentropy(prediction, target_var)
 
 	elif optimization["objective"] == 'mse':
-		cost = objectives.squared_error(prediction, target_var)
+		loss = objectives.squared_error(prediction, target_var)
 
-	#cost = cost.mean()
-	cost = objectives.aggregate(cost, mode='mean')
+	#loss = loss.mean()
+	loss = objectives.aggregate(loss, mode='mean')
 
 	# weight-decay regularization
 	if "l1" in optimization:
 		l1_penalty = regularization.regularize_network_params(network, regularization.l1) * optimization["l1"]
-		cost += l1_penalty
+		loss += l1_penalty
 	if "l2" in optimization:
 		l2_penalty = regularization.regularize_network_params(network, regularization.l2) * optimization["l2"]        
-		cost += l2_penalty 
+		loss += l2_penalty 
 
-	return cost
+	return loss
 
 
-def calculate_gradient(cost, params, weight_norm=[]):
+def calculate_gradient(loss, params, weight_norm=[]):
 	""" calculate gradients with option to clip norm """
 
-	grad = T.grad(cost, params)
+	grad = T.grad(loss, params)
 
 	# gradient clipping option
 	if weight_norm:

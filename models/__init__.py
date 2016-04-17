@@ -10,15 +10,20 @@ from .inception_genome_motif_model import inception_genome_motif_model
 from .cyclic_genome_motif_model import cyclic_genome_motif_model
 from .jaspar_motif_model import jaspar_motif_model
 from .jaspar_motif_model2 import jaspar_motif_model2
+from .conv_LSTM_model import conv_LSTM_model
+
+
+
 __all__ = [
-		   'load_model',
-		   'build_network',
-		   'categorical_genome_motif_model',
-       'genome_motif_model', 
-       'deepsea_model',
-       'recurrent_inception_motif_model', 
-       'jaspar_motif_model',
-       'jaspar_motif_model',
-       'cyclic_genome_motif_model',
-       'inception_genome_motif_model'
+  		   'load_model',
+  		   'build_network',
+  		   'categorical_genome_motif_model',
+         'genome_motif_model', 
+         'deepsea_model',
+         'recurrent_inception_motif_model', 
+         'jaspar_motif_model',
+         'jaspar_motif_model',
+         'cyclic_genome_motif_model',
+         'inception_genome_motif_model',
+         'conv_LSTM_model'
            ]

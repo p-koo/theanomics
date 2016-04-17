@@ -24,7 +24,7 @@ num_labels = np.round(train[1].shape[1])
 
 
 # build model
-model_name = "binary_genome_motif_model"
+model_name = "conv_LSTM_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
 

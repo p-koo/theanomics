@@ -42,6 +42,11 @@ def load_model(model_name, shape, num_labels):
 		network, input_var, target_var, optimization = recurrent_inception_motif_model(shape, num_labels)
 
 
+	elif model_name == "conv_LSTM_model":
+		from .conv_LSTM_model import conv_LSTM_model
+		network, input_var, target_var, optimization = conv_LSTM_model(shape, num_labels)
+
+
 
 	return network, input_var, target_var, optimization
 

@@ -99,15 +99,18 @@ def jaspar_motif_model2(shape, num_labels):
     net['batch4'] = BatchNormLayer(net['conv4'], epsilon=0.001)
     net['active4'] = ParametricRectifierLayer(net['batch4'], alpha=Constant(0.25), shared_axes='auto')
     net['pool4'] = PoolLayer(net['active4'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
+    net['drop4'] = DropoutLayer(net['pool4'], p=0.5)
 
-    net['dense4'] = DenseLayer(net['pool4'], num_units=500, W=GlorotUniform(), b=None, nonlinearity=None)
-    net['batch4'] = BatchNormLayer(net['dense4'], epsilon=0.001)
-    net['active4'] = ParametricRectifierLayer(net['batch4'], alpha=Constant(0.25), shared_axes='auto')
-
-    net['dense5'] = DenseLayer(net['active4'], num_units=num_labels, W=GlorotUniform(), b=None, nonlinearity=None)
+    net['dense5'] = DenseLayer(net['drop4'], num_units=500, W=GlorotUniform(), b=None, nonlinearity=None)
     net['batch5'] = BatchNormLayer(net['dense5'], epsilon=0.001)
-    net['output'] = NonlinearityLayer(net['batch5'], sigmoid)
+    net['active5'] = ParametricRectifierLayer(net['batch5'], alpha=Constant(0.25), shared_axes='auto')
+    net['drop5'] = DropoutLayer(net['active5'], p=0.5)
 
+    net['dense6'] = DenseLayer(net['active5'], num_units=num_labels, W=GlorotUniform(), b=None, nonlinearity=None)
+    net['batch6'] = BatchNormLayer(net['dense6'], epsilon=0.001)
+    net['output'] = NonlinearityLayer(net['batch6'], sigmoid)
+
+    
 
     
     optimization = {"objective": "binary",

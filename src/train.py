@@ -22,12 +22,12 @@ def train_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training set
-		train_cost = nnmodel.train_step(train_batches, num_train_batches, verbose)
-		nnmodel.train_monitor.add_cost(train_cost)
+		train_loss = nnmodel.train_step(train_batches, num_train_batches, verbose)
+		nnmodel.train_monitor.add_loss(train_loss)
 
 		# test current model with cross-validation data and store results
-		valid_cost, valid_prediction = nnmodel.test_step_batch(valid)
-		nnmodel.valid_monitor.update(valid_cost, valid_prediction, valid[1])
+		valid_loss, valid_prediction = nnmodel.test_step_batch(valid)
+		nnmodel.valid_monitor.update(valid_loss, valid_prediction, valid[1])
 		nnmodel.valid_monitor.print_results("valid")
 		
 		# save model
@@ -36,7 +36,7 @@ def train_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			nnmodel.save_model_parameters(savepath)
 
 		# check for early stopping					
-		status = nnmodel.valid_monitor.early_stopping(valid_cost, epoch, patience)
+		status = nnmodel.valid_monitor.early_stopping(valid_loss, epoch, patience)
 		if not status:
 			break
 
@@ -62,12 +62,12 @@ def train_valid_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training set
-		train_cost = nnmodel.train_step(train, batch_size, verbose)
-		nnmodel.train_monitor.add_cost(train_cost)
+		train_loss = nnmodel.train_step(train, batch_size, verbose)
+		nnmodel.train_monitor.add_loss(train_loss)
 
 		# test current model with cross-validation data and store results
-		valid_cost, valid_prediction, valid_label = nnmodel.test_step_minibatch(valid, batch_size)
-		nnmodel.valid_monitor.update(valid_cost, valid_prediction, valid_label)
+		valid_loss, valid_prediction, valid_label = nnmodel.test_step_minibatch(valid, batch_size)
+		nnmodel.valid_monitor.update(valid_loss, valid_prediction, valid_label)
 		nnmodel.valid_monitor.print_results("valid")
 		
 		# save model
@@ -76,7 +76,7 @@ def train_valid_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 			nnmodel.save_model_parameters(savepath)
 
 		# check for early stopping					
-		status = nnmodel.valid_monitor.early_stopping(valid_cost, epoch, patience)
+		status = nnmodel.valid_monitor.early_stopping(valid_loss, epoch, patience)
 		if not status:
 			break
 
@@ -98,8 +98,8 @@ def test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath):
 		nnmodel.set_parameters_from_file(savepath)
 
 		# get test metrics 
-		test_cost, test_prediction, test_label = nnmodel.test_step_minibatch(test, batch_size)
-		performance.update(test_cost, test_prediction, test_label)
+		test_loss, test_prediction, test_label = nnmodel.test_step_minibatch(test, batch_size)
+		performance.update(test_loss, test_prediction, test_label)
 		performance.print_results(" test") 
 
 	return performance
