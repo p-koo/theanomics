@@ -32,9 +32,13 @@ class NeuralNet:
 		self.input_var = input_var
 		self.target_var = target_var
 		self.optimization = optimization		
+		if 'learning_rate' in optimization:
+			self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
+		else:
+			self.learning_rate = []
 
 		# build model 
-		train_fun, test_fun = build_optimizer(network, input_var, target_var, optimization)
+		train_fun, test_fun = build_optimizer(network, input_var, target_var, optimization, self.learning_rate)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
@@ -50,10 +54,13 @@ class NeuralNet:
 		self.target_var = target_var
 		self.optimization = optimization
 
-		train_fun, test_fun = build_optimizer(self.network, self.input_var, self.target_var, self.optimization)
+		train_fun, test_fun = build_optimizer(self.network, self.input_var, self.target_var, self.optimization, self.learning_rate)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
+
+	def set_learning_rate(self, learning_rate):
+		self.learning_rate = learning_rate
 
 	def get_model_parameters(self):
 		return layers.get_all_param_values(self.network['output'])
@@ -306,7 +313,7 @@ class MonitorPerformance():
 # Neural network model building functions
 #------------------------------------------------------------------------------------------
 
-def build_optimizer(network, input_var, target_var, optimization):
+def build_optimizer(network, input_var, target_var, optimization, learning_rate):
 	# build loss function
 	prediction = layers.get_output(network['output'], deterministic=False)
 	loss = build_loss(network['output'], target_var, prediction, optimization)
@@ -319,7 +326,7 @@ def build_optimizer(network, input_var, target_var, optimization):
 		grad = calculate_gradient(loss, params)
 	  
 	# setup parameter updates
-	update_op = build_updates(grad, params, optimization)
+	update_op = build_updates(grad, params, optimization, learning_rate)
 
 	# test/validation set 
 	test_prediction = layers.get_output(network['output'], deterministic=True)
@@ -371,41 +378,41 @@ def calculate_gradient(loss, params, weight_norm=[]):
 	return grad
 
 
-def build_updates(grad, params, update_params):
+def build_updates(grad, params, update_params, learning_rate):
 	""" setup optimization algorithm """
 
 	if update_params['optimizer'] == 'sgd':
-		update_op = updates.sgd(grad, params, learning_rate=update_params['learning_rate']) 
+		update_op = updates.sgd(grad, params, learning_rate=learning_rate) 
  
 	elif update_params['optimizer'] == 'nesterov_momentum':
 		update_op = updates.nesterov_momentum(grad, params, 
-									learning_rate=update_params['learning_rate'], 
+									learning_rate=learning_rate, 
 									momentum=update_params['momentum'])
 	
 	elif update_params['optimizer'] == 'adagrad':
-		if "learning_rate" in update_params:
+		if learning_rate:
 			update_op = updates.adagrad(grad, params, 
-							  learning_rate=update_params['learning_rate'], 
+							  learning_rate=learning_rate, 
 							  epsilon=update_params['epsilon'])
 		else:
 			update_op = updates.adagrad(grad, params)
 
 	elif update_params['optimizer'] == 'rmsprop':
-		if "learning_rate" in update_params:
+		if learning_rate:
 			update_op = updates.rmsprop(grad, params, 
-							  learning_rate=update_params['learning_rate'], 
+							  learning_rate=learning_rate, 
 							  rho=update_params['rho'], 
 							  epsilon=update_params['epsilon'])
 		else:
 			update_op = updates.rmsprop(grad, params)
 	
 	elif update_params['optimizer'] == 'adam':
-		if "learning_rate" in update_params:
+		if learning_rate:
 			update_op = updates.adam(grad, params, 
-							learning_rate=update_params['learning_rate'], 
+							learning_rate=learning_rate, 
 							beta1=update_params['beta1'], 
 							beta2=update_params['beta2'], 
-							epsilon=update['epsilon'])
+							epsilon=update_params['epsilon'])
 		else:
 			update_op = updates.adam(grad, params)
   

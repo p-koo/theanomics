@@ -9,23 +9,6 @@ from PIL import Image
 from scipy.stats import norm
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
-# ############################################################################
-# Tencia Lee
-# Some code borrowed from:
-# https://github.com/Lasagne/Lasagne/blob/master/examples/mnist.py
-#
-# Implementation of variational autoencoder (AEVB) algorithm as in:
-# [1] arXiv:1312.6114 [stat.ML] (Diederik P Kingma, Max Welling 2013)
-
-# ################## Download and prepare the MNIST dataset ##################
-# For the linked MNIST data, the autoencoder learns well only in binary mode.
-# This is most likely due to the distribution of the values. Most pixels are
-# either very close to 0, or very close to 1.
-#
-# Running this code with default settings should produce a manifold similar
-# to the example in this directory. An animation of the manifold's evolution
-# can be found here: https://youtu.be/pgmnCU_DxzM
-
 def load_dataset():
     if sys.version_info[0] == 2:
         from urllib import urlretrieve

@@ -4,7 +4,7 @@ from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 from build_network import build_network
 
-def binary_genome_motif_model(shape, num_labels):
+def binary_conv_autoencoder_model(shape, num_labels):
 
 	
 	input_var = T.tensor4('inputs')
@@ -54,10 +54,10 @@ def binary_genome_motif_model(shape, num_labels):
   			  }
 
 	model_layers = [layer1, layer2, layer3, layer5, layer6]
-	network = build_network(model_layers)
+	network = build_network(model_layers, autoencode=1)
 
 	# optimization parameters
-	optimization = {"objective": "binary",
+	optimization = {"objective": "mse",
 	                "optimizer": "adam"
 #	                "optimizer": "nesterov_momentum",
 #	                "learning_rate": 0.1,	                

@@ -12,7 +12,7 @@ from data import load_data
 
 #------------------------------------------------------------------------------
 # load data
-#"""
+"""
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
 options = {"class_range": range(51,55)}# 
@@ -39,7 +39,8 @@ filepath = os.path.join(datapath, 'N=100000_S=200_M=10_G=20_data.pickle')
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
-"""
+#"""
+
 #-------------------------------------------------------------------------------------
 
 
@@ -71,12 +72,12 @@ nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size,
 				num_epochs=100, patience=10, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
-min_cost, min_index = nnmodel.get_min_cost()
+min_loss, min_index = nnmodel.get_min_loss()
 savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
 nnmodel.set_parameters_from_file(savepath)
 
 # test set perfomance
-nnmodel.get_min_cost()
+nnmodel.get_min_loss()
 
 savepath = filepath + "_epoch_" + str(1) + ".pickle"
 nnmodel.test_model(test, batch_size, "test")

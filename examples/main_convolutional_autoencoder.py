@@ -8,36 +8,24 @@ from src import train as fit
 from src import make_directory 
 from models import load_model
 from data import load_data
-#np.random.seed(247) # for reproducibility
+np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
 # load data
 
-name = 'Basset' # 'DeepSea'
-datapath = '/home/peter/Data/'+name
-options = {"class_range": range(3)}# 
-train, valid, test = load_data(name, datapath, options)
+name = 'MotifSimulation_binary'
+datapath = '/home/peter/Data/SequenceMotif'
+filepath = os.path.join(datapath, 'N=100000_S=200_M=10_G=20_data.pickle')
+train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
-print "total number of training samples:"
-print train[0].shape
-print train[1].shape
-
-print "total number of validation samples:"
-print valid[0].shape
-
-print "number of positive training samples for each class:"
-print np.sum(train[1], axis=0)
-print "number of positive validation samples for each class:"
-print np.sum(valid[1], axis=0)
-
 #-------------------------------------------------------------------------------------
 
-# load model parameters
-model_name = "binary_genome_motif_model"
-nnmodel = NeuralNet(model_name, shape, num_labels)
 
+# build model
+model_name = "binary_conv_autoencoder_model"
+nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
@@ -46,7 +34,7 @@ filepath = os.path.join(datapath, model_name)
 
 # train model
 batch_size = 64
-nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=20, verbose=1, filepath=filepath)
+nnmodel = fit.anneal_train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=5, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
 min_loss, min_index = nnmodel.get_min_loss()
@@ -70,18 +58,3 @@ performance = fit.test_model_all(nnmodel, test, batch_size, num_train_epochs, fi
 
 # save test performance
 performance.save_metrics(filepath)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

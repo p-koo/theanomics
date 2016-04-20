@@ -37,9 +37,14 @@ batch_size = 128
 nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=2, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
-nnmodel.set_best_model_parameters(filepath)
+min_loss, min_index = nnmodel.get_min_loss()
+savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
+nnmodel.set_parameters_from_file(savepath)
 
 # test set perfomance
+nnmodel.get_min_loss()
+
+savepath = filepath + "_epoch_" + str(1) + ".pickle"
 nnmodel.test_model(test, batch_size, "test")
 nnmodel.save_all_metrics(filepath)
 
