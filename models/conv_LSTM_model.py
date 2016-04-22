@@ -67,10 +67,11 @@ def conv_LSTM_model(shape, num_labels):
     net = {}
     net['input'] = InputLayer(input_var=input_var, shape=shape)
     
+    """
     # stage 1 - 2 convolution layers   
     net['incept1'] = inception_module(net['input'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
     net['pool1'] = PoolLayer(net['incept1'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
-    """
+
     # inception module on motifs
     net['incept2'] = inception_module(net['pool1'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
     net['pool2'] = PoolLayer(net['incept2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)

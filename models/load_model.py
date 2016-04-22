@@ -46,6 +46,11 @@ def load_model(model_name, shape, num_labels):
 		from .conv_LSTM_model import conv_LSTM_model
 		network, input_var, target_var, optimization = conv_LSTM_model(shape, num_labels)
 
+	elif model_name == "MNIST_CNN_model":
+		from .MNIST_CNN_model import MNIST_CNN_model
+		network, input_var, target_var, optimization = MNIST_CNN_model(shape, num_labels)
+
+
 
 
 	return network, input_var, target_var, optimization

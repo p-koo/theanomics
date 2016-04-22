@@ -72,55 +72,53 @@ def jaspar_motif_model(shape, num_labels):
 	motifs = load_JASPAR_motifs('/home/peter/Code/DeepMotifs/models/JASPAR_motifs.cpickle', motif_size)
 	num_motifs = len(motifs)
 
-	# initialize weights with JASPAR motifs
+	# stage1 - initialize weights with JASPAR motifs
 	net['conv1_1'] = ConvLayer(net['input'], num_filters=num_motifs, filter_size=(motif_size, 1), stride=(1, 1),
 										   W= motifs.astype(np.float32), b=Constant(0), nonlinearity=None)
-	net['conv1_1'].W = net['conv1_1'].add_param(net['conv1_1'].W, net['conv1_1'].W.container.data.shape, trainable=False) 
-	#set_all_param_values(net['conv1_1'], motifs.astype(np.float32))
-
+	net['conv1_1'].params[net['conv1_1'].W].remove('trainable')
 	net['conv1_2'] = ConvLayer(net['input'], num_filters=50, filter_size=(motif_size, 1), stride=(1, 1),
 										   W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
 
 	# merge convolution motifs
 	net['concat'] = ConcatLayer([net['conv1_1'], net['conv1_2']])
-	net['norm1'] = LocalResponseNormalization2DLayer(net['concat'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-	#net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
+	#net['norm1'] = LocalResponseNormalization2DLayer(net['concat'], alpha=.001/9.0, k=1., beta=0.75, n=5)
+	net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
 	net['active1'] = ParametricRectifierLayer(net['norm1'], alpha=Constant(0.25), shared_axes='auto')
 	#net['pool1'] = PoolLayer(net['active1'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
 
 	# convolution layer 2
 	net['conv2'] = ConvLayer(net['active1'], num_filters=200, filter_size=(8, 1), stride=(1, 1),
 										   W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
-	net['norm2'] = LocalResponseNormalization2DLayer(net['conv2'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-	#net['norm2'] = BatchNormLayer(net['conv2'], epsilon=0.001)
+	#net['norm2'] = LocalResponseNormalization2DLayer(net['conv2'], alpha=.001/9.0, k=1., beta=0.75, n=5)
+	net['norm2'] = BatchNormLayer(net['conv2'], epsilon=0.001)
 	net['active2'] = ParametricRectifierLayer(net['norm2'], alpha=Constant(0.25), shared_axes='auto')
 	net['pool2'] = PoolLayer(net['active2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
 
 	# convolution layer 3
 	net['conv3'] = ConvLayer(net['pool2'], num_filters=200, filter_size=(8, 1), stride=(1, 1),
 										   W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
-	net['norm3'] = LocalResponseNormalization2DLayer(net['conv3'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-	#net['norm3'] = BatchNormLayer(net['conv3'], epsilon=0.001)
+	#net['norm3'] = LocalResponseNormalization2DLayer(net['conv3'], alpha=.001/9.0, k=1., beta=0.75, n=5)
+	net['norm3'] = BatchNormLayer(net['conv3'], epsilon=0.001)
 	net['active3'] = ParametricRectifierLayer(net['norm3'], alpha=Constant(0.25), shared_axes='auto')
 	#net['pool3'] = PoolLayer(net['active3'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
 
 	# convolution layer 4
 	net['conv4'] = ConvLayer(net['active3'], num_filters=200, filter_size=(8, 1), stride=(1, 1),
 										   W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
-	net['norm4'] = LocalResponseNormalization2DLayer(net['conv4'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-	#net['norm4'] = BatchNormLayer(net['conv43'], epsilon=0.001)
+	#net['norm4'] = LocalResponseNormalization2DLayer(net['conv4'], alpha=.001/9.0, k=1., beta=0.75, n=5)
+	net['norm4'] = BatchNormLayer(net['conv4'], epsilon=0.001)
 	net['active4'] = ParametricRectifierLayer(net['norm4'], alpha=Constant(0.25), shared_axes='auto')
-	net['pool4'] = PoolLayer(net['active4'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
-	net['drop4'] = DropoutLayer(net['pool4'], p=0.25)
+	net['drop4'] = DropoutLayer(net['active4'], p=0.2)
+	net['pool4'] = PoolLayer(net['drop4'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
 
 	# dense layer 4
-	net['dense5'] = DenseLayer(net['drop4'], num_units=500, W=GlorotUniform(), b=None, nonlinearity=None)
+	net['dense5'] = DenseLayer(net['pool4'], num_units=100, W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
 	net['batch5'] = BatchNormLayer(net['dense5'], epsilon=0.001)
 	net['active5'] = ParametricRectifierLayer(net['batch5'], alpha=Constant(0.25), shared_axes='auto')
 	net['drop5'] = DropoutLayer(net['active5'], p=0.5)
 
 	# dense layer 4
-	net['dense6'] = DenseLayer(net['drop5'], num_units=num_labels, W=GlorotUniform(), b=None, nonlinearity=None)
+	net['dense6'] = DenseLayer(net['drop5'], num_units=num_labels, W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
 	net['output'] = NonlinearityLayer(net['dense6'], sigmoid)
 
 	

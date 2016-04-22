@@ -16,7 +16,7 @@ def categorical_genome_motif_model(shape, num_labels):
   			  'name': 'input'
 			 }
 	layer2 = {'layer': 'convolution', 
-	          'num_filters': 200, 
+	          'num_filters': 100, 
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
 	          'b': None,
@@ -26,11 +26,11 @@ def categorical_genome_motif_model(shape, num_labels):
   			  'name': 'conv1'
   			  }
 	layer3 = {'layer': 'convolution', 
-	          'num_filters': 200, 
+	          'num_filters': 50, 
 	          'filter_size': (8, 1),
 	          'W': GlorotUniform(),
 	          'b': None,
-	          'dropout': .2,
+	          #'dropout': .2,
 	          'norm': 'batch', 
 	          'activation': 'relu',
 	          'pool_size': (4, 1),

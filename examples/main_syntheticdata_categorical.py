@@ -40,11 +40,6 @@ nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epoch
 min_loss, min_index = nnmodel.get_min_loss()
 savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
 nnmodel.set_parameters_from_file(savepath)
-
-# test set perfomance
-nnmodel.get_min_loss()
-
-savepath = filepath + "_epoch_" + str(1) + ".pickle"
 nnmodel.test_model(test, batch_size, "test")
 nnmodel.save_all_metrics(filepath)
 
