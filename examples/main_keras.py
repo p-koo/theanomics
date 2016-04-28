@@ -24,10 +24,15 @@ np.random.seed(247) # for reproducibility
 
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
-options = {"class_range": range(3)}# 
+options = {"class_range": range(5)}# 
 train, valid, test = load_data(name, datapath, options)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
+
+train = (np.squeeze(np.transpose(train[0],(0,2,1,3))), train[1])
+valid = (np.squeeze(np.transpose(valid[0],(0,2,1,3))), valid[1])
+test = (np.squeeze(np.transpose(test[0],(0,2,1,3))), test[1])
+
 
 """
 name = 'DeepSea'
@@ -48,7 +53,7 @@ shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 """
 
-outputname = 'binary'
+outputname = 'keras_basset_2'
 filepath = make_directory(datapath, 'Results')
 #------------------------------------------------------------------------------
 
@@ -70,9 +75,9 @@ test = (X_test, y_test)
 # Model hyper-parameters
 
 # convolutional layer parameters
-conv_filters = [100, 200, 200]     # number of convolution filters for each layer
-filter_length = [8, 8, 8]    # filter length for each layer
-pool_length = [4, 4, 4]         # max pool length for each layer
+conv_filters = [300, 200, 200]     # number of convolution filters for each layer
+filter_length = [19, 6, 4]    # filter length for each layer
+pool_length = [3, 4, 4]         # max pool length for each layer
 conv_activation="relu"          # convolution activation units
 W_l1_conv = 0.00000000                # l1 weight decay convolutional layer
 W_l2_conv = 0.0000000                # l2 weight decay convolutional layer
@@ -81,25 +86,27 @@ b_l2_conv = 0                # l2 weight decay convolutional layer
 dropout_conv = 0.2                   # dropout rate
 
 # fully connected layer parameters
-fully_connected = [200]     # number of fully connected units
+fully_connected = [800, 800]     # number of fully connected units
 fc_activation = 'relu'          # fully connected activation units
 W_l1_fc = 0.00000000                  # l1 weight decay dense layer
 W_l2_fc = 0.0000000                  # l2 weight decay dense layer
 b_l1_fc = 0                  # l1 weight decay dense layer
 b_l2_fc = 0                  # l2 weight decay dense layer
-dropout_fc = 0.3                   # dropout rate
+dropout_fc = 0.5                   # dropout rate
 
 # output layer parameters
-num_labels = y_train.shape[1]   # number of labels (output units)
+num_labels = train[1].shape[1]   # number of labels (output units)
 output_activation = 'sigmoid'   # activation for output unit (prediction)
 
 # optimization parameters
-optimizer = 'adam'           # optimizer (rmsprop, adam, sgd, adagrad)
+optimizer = 'rmsprop'           # optimizer (rmsprop, adam, sgd, adagrad)
 loss = 'binary_crossentropy'#'binary_crossentropy'    # loss function to minimize (mse, binary_crossentropy,)
 batch_size = 128                # mini-batch size 
 nb_epoch = 100                  # number of epochs to train
 
 # figure out fan-in for each layer 
+num_data, seq_length, dim = train[0].shape
+
 input_length = [seq_length, seq_length/pool_length[0], seq_length/pool_length[0]/pool_length[1]]
 input_length = np.round(input_length).astype(int)
 
@@ -115,8 +122,7 @@ model.add(Convolution1D(input_dim=dim,
                         filter_length=filter_length[0],
                         init='glorot_uniform', 
                         border_mode="same",
-                        subsample_length=1,
-                        activation=None
+                        subsample_length=1
 #                        W_constraint = maxnorm(weight_norm), 
 #                        W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
                         ))            
@@ -132,8 +138,7 @@ model.add(Convolution1D(input_dim=conv_filters[0],
                         filter_length=filter_length[1],
                         init='glorot_uniform', 
                         border_mode="same",
-                        subsample_length=1,
-                        activation=None
+                        subsample_length=1
                         #W_constraint = maxnorm(weight_norm), 
                         #W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
                         ))                    
@@ -147,31 +152,37 @@ model.add(Convolution1D(input_dim=conv_filters[1],
                         nb_filter=conv_filters[2],
                         filter_length=filter_length[2],
                         border_mode="same",
-                        subsample_length=1,
-                         activation=None
+                        subsample_length=1
                         #W_constraint = maxnorm(weight_norm), 
                         #W_regularizer=l1l2(l1=W_l1_conv, l2=W_l2_conv)
                         ))                         
 model.add(BatchNormalization())#epsilon=1e-06, mode=0, axis=1))
 model.add(PReLU())
 model.add(MaxPooling1D(pool_length=pool_length[2], stride=pool_length[2]))
-model.add(Dropout(dropout_conv))
-
 
 # flatten feature maps for fully connected layer
 model.add(Flatten())
 
 # fully connected layer
 model.add(Dense(input_dim=input_length[2]*conv_filters[2], 
-                output_dim=fully_connected[0],
-                activation=None
+                output_dim=fully_connected[0]
                 #W_constraint = maxnorm(weight_norm), 
                 #W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc)
                 )) 
 model.add(BatchNormalization())
 model.add(PReLU())
 model.add(Dropout(dropout_fc))
-
+"""
+# fully connected layer
+model.add(Dense(input_dim=fully_connected[0], 
+                output_dim=fully_connected[1]
+                #W_constraint = maxnorm(weight_norm), 
+                #W_regularizer=l1l2(l1=W_l1_fc, l2=W_l2_fc)
+                )) 
+model.add(BatchNormalization())
+model.add(PReLU())
+model.add(Dropout(dropout_fc))
+"""
 # sigmoid output layer
 model.add(Dense(input_dim=fully_connected[0], 
                 output_dim=num_labels,
@@ -193,7 +204,7 @@ checkpointer = ModelCheckpoint(filepath=os.path.join(filepath,"bestmodel.hdf5"),
 
 # early stopping with validation loss
 earlystopper = EarlyStopping(monitor='val_loss', 
-                             patience=3, 
+                             patience=20, 
                              verbose=1)
 
 # train model

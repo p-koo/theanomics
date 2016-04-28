@@ -58,11 +58,11 @@ def binary_genome_motif_model(shape, num_labels):
 
 	# optimization parameters
 	optimization = {"objective": "binary",
-	                "optimizer": "adam"
+	                "optimizer": "rmsprop",
 #	                "optimizer": "nesterov_momentum",
-#	                "learning_rate": 0.1,	                
-#	                "rho": .9,
-#	                "epsilon": 1e-6,
+	                "learning_rate": 0.1,	                
+	                "rho": .9,
+	                "epsilon": 1e-6
 #	                "weight_norm": 7, 
 #	                "momentum": 0.975,
 #	                "l1": 1e-7,

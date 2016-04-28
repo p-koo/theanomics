@@ -16,64 +16,55 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'input'
 			  }
 	layer2 = {'layer': 'convolution', 
-			  'num_filters': 300, 
-			  'filter_size': (8, 1),
+			  'num_filters': 200, 
+			  'filter_size': (16, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'local_norm': 'local', 
-			  #'batch_norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (4, 1),
 			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'convolution', 
-			  'num_filters': 300, 
+			  'num_filters': 200, 
 			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'local_norm': 'local', 
-	          #'batch_norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (4, 1),
 			  'name': 'conv2'
 			  }
 			  
 	layer4 = {'layer': 'convolution', 
-			  'num_filters': 300, 
-			  'filter_size': (8, 1),
+			  'num_filters': 200, 
+			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'local_norm': 'local', 
-	          #'batch_norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (4, 1),
-			  'dropout': .3,
 			  'name': 'conv3'
 			  }
-  	"""
-  	layer5 = {'layer': 'convolution', 
-			  'num_filters': 200, 
-			  'filter_size': (8, 1),
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
-			  'local_norm': 'local', 
-			  #'batch_norm': 'batch', 
-			  'activation': 'prelu',
-			  'pool_size': (4, 1),
-			  'name': 'conv4'
-			  }
- 	""" 
-	layer6 = {'layer': 'dense', 
-			  'num_units': 500, 
+
+	layer5 = {'layer': 'dense', 
+			  'num_units': 800, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
-			  'batch_norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'prelu', 
 			  'dropout': .5,
 			  'name': 'dense1'
 			  }
-
-
+	layer6 = {'layer': 'dense', 
+			  'num_units': 800, 
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05), 
+			  'norm': 'batch', 
+			  'activation': 'prelu', 
+			  'dropout': .5,
+			  'name': 'dense2'
+			  }
   	layer7 = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
@@ -82,23 +73,21 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'output'
 			  }
 			  
-	model_layers = [layer1, layer2, layer3, layer4, layer6, layer7]
+	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6, layer7]
 	network = build_network(model_layers)
 
 
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-	                #"optimizer": "rmsprop",
-	                "learning_rate": 0.01,	                
-	                "beta1": 0.9,
-	                "beta2": 0.999,
-	                #"rho": .9,
-	                "epsilon": 1e-6,
+	                "learning_rate": 0.0001,	                
+	                "beta1": .9,
+	                "beta2": .999,
+	                "epsilon": 1e-8,
 	                "weight_norm": 7, 
 #	                "momentum": 0.9
-	                "l1": 1e-7,
-	                "l2": 1e-8
+	                "l1": 1e-5,
+	                "l2": 1e-6
 					}
 
 	return network, input_var, target_var, optimization

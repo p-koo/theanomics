@@ -34,6 +34,7 @@ class NeuralNet:
 		self.optimization = optimization		
 		if 'learning_rate' in optimization:
 			self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
+			self.learning_rate = optimization['learning_rate']
 		else:
 			self.learning_rate = []
 
@@ -61,6 +62,10 @@ class NeuralNet:
 
 	def set_learning_rate(self, learning_rate):
 		self.learning_rate = learning_rate
+		train_fun, test_fun = build_optimizer(self.network, self.input_var, self.target_var, self.optimization, self.learning_rate)
+		self.train_fun = train_fun
+		self.test_fun = test_fun
+
 
 	def get_model_parameters(self):
 		return layers.get_all_param_values(self.network['output'])
@@ -70,7 +75,7 @@ class NeuralNet:
 		self.network['output'] = layers.set_all_param_values(self.network['output'], all_param_values)
 
 
-	def save_model_parameters(self, filepath):
+	def save_model_parameters(self, filepath, best=False):
 		print "saving model parameters to: " + filepath
 		all_param_values = layers.get_all_param_values(self.network['output'])
 		f = open(filepath, 'wb')
@@ -95,12 +100,8 @@ class NeuralNet:
 		min_loss, min_index = self.valid_monitor.get_min_loss()
 		return min_loss, min_index    
 
-	def test_step_batch(self, test):
-		test_loss, test_prediction = self.test_fun(test[0].astype(np.float32), test[1].astype(np.int32)) 
-		return test_loss, test_prediction
 
-
-	def test_step_minibatch(self, test, batch_size):
+	def test_step(self, test, batch_size):
 
 		performance = MonitorPerformance()
 
@@ -112,7 +113,7 @@ class NeuralNet:
 			prediction = np.empty((1,max(test[1])+1))
 
 		num_batches = test[1].shape[0] // batch_size
-		batches = batch_generator(test[0], test[1], batch_size)
+		batches = batch_generator(test[0], test[1], batch_size, shuffle=False)
 		for epoch in range(num_batches):
 			X, y = next(batches)
 			loss, prediction_minibatch = self.test_fun(X, y)
@@ -144,7 +145,7 @@ class NeuralNet:
 
 
 	def test_model(self, test, batch_size, name):
-		test_loss, test_prediction, test_label = self.test_step_minibatch(test, batch_size)
+		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
 		if name == "train":
 			self.train_monitor.update(test_loss, test_prediction, test_label)
 			self.train_monitor.print_results(name)
@@ -154,7 +155,7 @@ class NeuralNet:
 		if name == "test":
 			self.test_monitor.update(test_loss, test_prediction, test_label)
 			self.test_monitor.print_results(name)
-
+		return test_loss
 
 	def save_metrics(self, filepath, name):
 		if name == "train":
@@ -275,13 +276,13 @@ class MonitorPerformance():
 
 	def print_results(self, name): 
 		if self.verbose == 1:
-			print("  " + name + " loss:\t\t{:.4f}".format(self.loss[-1]/1.))
+			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]/1.))
 			if self.metric.any():
 				accuracy, auc_roc, auc_pr = self.get_mean_values()
 				accuracy_std, auc_roc_std, auc_pr_std = self.get_error_values()
-				print("  " + name + " accuracy:\t{:.4f}+/-{:.4f}".format(accuracy, accuracy_std))
-				print("  " + name + " auc-roc:\t{:.4f}+/-{:.4f}".format(auc_roc, auc_roc_std))
-				print("  " + name + " auc-pr:\t\t{:.4f}+/-{:.4f}".format(auc_pr, auc_pr_std))
+				print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(accuracy, accuracy_std))
+				print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(auc_roc, auc_roc_std))
+				print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(auc_pr, auc_pr_std))
 
 
 	def progress_bar(self, epoch, num_batches, bar_length=30):
@@ -346,8 +347,8 @@ def build_loss(network, target_var, prediction, optimization):
 		loss = objectives.categorical_crossentropy(prediction, target_var)
 
 	elif optimization["objective"] == 'binary':
-		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
-		#loss = objectives.binary_crossentropy(prediction, target_var)
+		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
+		loss = objectives.binary_crossentropy(prediction, target_var)
 
 	elif optimization["objective"] == 'mse':
 		loss = objectives.squared_error(prediction, target_var)
@@ -407,7 +408,7 @@ def build_updates(grad, params, update_params, learning_rate):
 			update_op = updates.rmsprop(grad, params)
 	
 	elif update_params['optimizer'] == 'adam':
-		if learning_rate:
+		if 'beta1' in update_params:
 			update_op = updates.adam(grad, params, 
 							learning_rate=learning_rate, 
 							beta1=update_params['beta1'], 

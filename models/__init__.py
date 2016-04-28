@@ -12,7 +12,7 @@ from .jaspar_motif_model import jaspar_motif_model
 from .jaspar_motif_model2 import jaspar_motif_model2
 from .conv_LSTM_model import conv_LSTM_model
 from .MNIST_CNN_model import MNIST_CNN_model
-
+from .test_motif_model import test_motif_model
 
 __all__ = [
   		   'load_model',
@@ -26,5 +26,6 @@ __all__ = [
          'cyclic_genome_motif_model',
          'inception_genome_motif_model',
          'conv_LSTM_model',
-         'MNIST_CNN_model'
+         'MNIST_CNN_model',
+         'test_motif_model'
            ]

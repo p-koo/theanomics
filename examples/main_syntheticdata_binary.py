@@ -4,7 +4,7 @@ import os
 import numpy as np
 sys.path.append('..')
 from src import NeuralNet
-from src import train as fit
+from src import train_learning_decay
 from src import make_directory 
 from models import load_model
 from data import load_data
@@ -35,23 +35,24 @@ filepath = os.path.join(datapath, outputname)
 
 # train model
 batch_size = 64
-nnmodel = fit.anneal_train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=5, verbose=1, filepath=filepath)
+#nnmodel = fit.anneal_train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=5, verbose=1, filepath=filepath)
+nnmodel = train_learning_decay(nnmodel, train, valid, learning_rate=.1, 
+								batch_size=128, num_epochs=500, patience=14, 
+								learn_patience=2, decay=0.5, verbose=1, filepath=filepath)
+
 
 # save best model --> lowest cross-validation error
 min_loss, min_index = nnmodel.get_min_loss()
 savepath = filepath + "_epoch_" + str(min_index) + ".pickle"
 nnmodel.set_parameters_from_file(savepath)
-
-# test set perfomance
-nnmodel.get_min_loss()
-
-savepath = filepath + "_epoch_" + str(1) + ".pickle"
-nnmodel.test_model(test, batch_size, "test")
-nnmodel.save_all_metrics(filepath)
-
-# save all performance metrics (train, valid, test)
 savepath = filepath + "_best.pickle"
 nnmodel.save_model_parameters(savepath)
+
+# test model
+nnmodel.test_model(test, batch_size, "test")
+
+# save all performance metrics (train, valid, test)
+nnmodel.save_all_metrics(filepath)
 
 # monitor/save test performance with parameters for each training epoch
 num_train_epochs = nnmodel.get_num_epochs()

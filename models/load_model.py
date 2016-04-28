@@ -50,8 +50,12 @@ def load_model(model_name, shape, num_labels):
 		from .MNIST_CNN_model import MNIST_CNN_model
 		network, input_var, target_var, optimization = MNIST_CNN_model(shape, num_labels)
 
+	elif model_name == "test_motif_model":
+		from .test_motif_model import test_motif_model
+		network, input_var, target_var, optimization = test_motif_model(shape, num_labels)
 
 
+		
 
 	return network, input_var, target_var, optimization
 
