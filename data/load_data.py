@@ -36,6 +36,10 @@ def load_data(model_name, filepath, options=[]):
 	elif model_name == "MotifSimulation_binary":
 		from .MotifSimulation_binary import MotifSimulation_binary
 		train, valid, test = MotifSimulation_binary(filepath)
+	
+	elif model_name == "MotifSimulation_correlated":
+		from .MotifSimulation_correlated import MotifSimulation_correlated
+		train, valid, test = MotifSimulation_correlated(filepath)
 
 	elif model_name == "MotifSimulation_categorical":
 		from .MotifSimulation_categorical import MotifSimulation_categorical 

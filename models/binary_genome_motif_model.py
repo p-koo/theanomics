@@ -11,33 +11,81 @@ def binary_genome_motif_model(shape, num_labels):
 	target_var = T.dmatrix('targets')
 
     # create model
-	layer1 = {'layer': 'input',
+	input_layer = {'layer': 'input',
 	          'input_var': input_var,
 	          'shape': shape,
   			  'name': 'input'
   			  }
-	layer2 = {'layer': 'convolution', 
-	          'num_filters': 200, 
-	          'filter_size': (8, 1),
+	conv1 = {'layer': 'convolution', 
+	          'num_filters': 64, 
+	          'filter_size': (4, 1),
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
 	          'norm': 'batch', 
 	          'activation': 'prelu',
-	          'pool_size': (4, 1),
   			  'name': 'conv1'
   			  }
-	layer3 = {'layer': 'convolution', 
-	          'num_filters': 200, 
-	          'filter_size': (8, 1),
+	conv1_2 = {'layer': 'convolution', 
+	          'num_filters': 128, 
+	          'filter_size': (6, 1),
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
 	          'norm': 'batch', 
 	          'activation': 'prelu',
-	          'pool_size': (4, 1),
+	          'pool_size': (2, 1),
+  			  'name': 'conv1'
+  			  }
+  	conv2 = {'layer': 'convolution', 
+	          'num_filters': 128, 
+	          'filter_size': (4, 1),
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05),
+	          'norm': 'batch', 
+	          'activation': 'prelu',
   			  'name': 'conv2'
   			  }
-  	layer5 = {'layer': 'dense', 
-	          'num_units': 100, 
+  	conv2_2 = {'layer': 'convolution', 
+	          'num_filters': 256, 
+	          'filter_size': (4, 1),
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05),
+	          'norm': 'batch', 
+	          'activation': 'prelu',
+	          'pool_size': (2, 1),
+  			  'name': 'conv2'
+  			  }
+	conv3 = {'layer': 'convolution', 
+	          'num_filters': 256, 
+	          'filter_size': (4, 1),
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05),
+	          'norm': 'batch', 
+	          'activation': 'prelu',
+  			  'name': 'conv3'
+  			  }
+	conv4 = {'layer': 'convolution', 
+	          'num_filters': 512, 
+	          'filter_size': (4, 1),
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05),
+	          'norm': 'batch', 
+	          'activation': 'prelu',
+	          'pool_size': (2, 1),
+	          'name': 'conv4'
+  			  }
+	conv5 = {'layer': 'convolution', 
+	          'num_filters': 768, 
+	          'filter_size': (4, 1),
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05),
+	          'norm': 'batch', 
+	          'activation': 'prelu',
+	          'pool_size': (2, 1),
+	          'dropout': .5,
+  			  'name': 'conv5'
+  			  }
+	dense1 = {'layer': 'dense', 
+	          'num_units': 1028, 
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05), 
 	          'norm': 'batch',
@@ -45,7 +93,16 @@ def binary_genome_motif_model(shape, num_labels):
 	          'dropout': .5,
   			  'name': 'dense'
   			  }
-	layer6 = {'layer': 'dense', 
+	dense2 = {'layer': 'dense', 
+	          'num_units': 512, 
+	          'W': GlorotUniform(),
+	          'b': Constant(0.05), 
+	          'norm': 'batch',
+	          'activation': 'prelu',
+	          'dropout': .5,
+  			  'name': 'dense'
+  			  }
+  	output = {'layer': 'dense', 
 	          'num_units': num_labels, 
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
@@ -53,15 +110,16 @@ def binary_genome_motif_model(shape, num_labels):
   			  'name': 'output'
   			  }
 
-	model_layers = [layer1, layer2, layer3, layer5, layer6]
+	model_layers = [input_layer, conv1, conv1_2, conv2, conv2_2, conv3, conv4, conv5, dense1, dense2, output]
 	network = build_network(model_layers)
 
 	# optimization parameters
 	optimization = {"objective": "binary",
-	                "optimizer": "rmsprop",
+	                "optimizer": "adam",
 #	                "optimizer": "nesterov_momentum",
-	                "learning_rate": 0.1,	                
-	                "rho": .9,
+	                "learning_rate": 0.001,	                
+	                "beta1": .9,
+	                "beta2": .999,
 	                "epsilon": 1e-6
 #	                "weight_norm": 7, 
 #	                "momentum": 0.975,

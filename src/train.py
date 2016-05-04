@@ -21,7 +21,7 @@ def train_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500,
 		nnmodel.train_monitor.add_loss(train_loss)
 
 		# test current model with cross-validation data and store results
-		nnmodel.test_model(valid, batch_size, "valid")
+		valid_loss = nnmodel.test_model(valid, batch_size, "valid")
 		
 		# save model
 		if filepath:

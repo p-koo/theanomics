@@ -90,10 +90,10 @@ def calculate_metrics(label, prediction):
 	auc_pr, pr = pr_metrics(label, prediction)
 	mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
 	std = [np.std(accuracy), np.std(auc_roc), np.std(auc_pr)]
-	#print "ROC"
-	#print auc_roc
-	#print "PR"
-	#print auc_pr
+	print "ROC"
+	print auc_roc
+	print "PR"
+	print auc_pr
 	return mean, std, roc, pr
 
 

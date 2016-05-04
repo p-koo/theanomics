@@ -135,11 +135,13 @@ class NeuralNet:
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
 		batches = batch_generator(train[0], train[1], batch_size)
+		accuracy = 0
 		for epoch in range(num_batches):
 			X, y = next(batches)
 			loss, prediction = self.train_fun(X, y)
+			accuracy += np.mean(np.round(prediction) == y)
 			performance.add_loss(loss)
-			performance.progress_bar(epoch+1., num_batches)
+			performance.progress_bar(epoch+1., num_batches, accuracy/(epoch+1)*100)
 		print "" 
 		return performance.get_mean_loss()
 
@@ -285,14 +287,14 @@ class MonitorPerformance():
 				print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(auc_pr, auc_pr_std))
 
 
-	def progress_bar(self, epoch, num_batches, bar_length=30):
+	def progress_bar(self, epoch, num_batches, accuracy, bar_length=30):
 		if self.verbose == 1:
 			remaining_time = (time.time()-self.start_time)*(num_batches-epoch)/epoch
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f     " \
-			%(progress+spaces, percent*100, remaining_time, self.get_mean_loss()))
+			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
+			%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), accuracy))
 			sys.stdout.flush()
 
 
