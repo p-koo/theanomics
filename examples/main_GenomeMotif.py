@@ -16,7 +16,7 @@ np.random.seed(727) # for reproducibility
 
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
-options = {"class_range": range(10)}# 
+options = {"class_range": range(40)}# 
 train, valid, test = load_data(name, datapath, options)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
@@ -37,7 +37,7 @@ print np.sum(valid[1], axis=0)
 #-------------------------------------------------------------------------------------
 
 # load model parameters
-model_name = "test_motif_model"
+model_name = "binary_genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
 nnmodel.print_layers()

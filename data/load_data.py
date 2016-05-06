@@ -45,5 +45,8 @@ def load_data(model_name, filepath, options=[]):
 		from .MotifSimulation_categorical import MotifSimulation_categorical 
 		train, valid, test = MotifSimulation_categorical(filepath)
 
+	elif model_name == "RNA_compete":
+		from .RNA_compete import RNA_compete 
+		train, valid, test = RNA_compete(filepath)
 
 	return train, valid, test

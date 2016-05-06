@@ -15,53 +15,12 @@ np.random.seed(247) # for reproducibility
 
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_correlated_motifs_300000.hdf5')
+filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
+#filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
-"""
-random
-  test loss:		0.19582
-  test accuracy:	0.93177+/-0.02346
-  test auc-roc:	0.90736+/-0.03641
-  test auc-pr:		0.72602+/-0.09486
-
-  test loss:		0.18212
-  test accuracy:	0.93527+/-0.02120
-  test auc-roc:	0.92287+/-0.03157
-  test auc-pr:		0.75277+/-0.08848
-
-
-correlated
-  test loss:		0.19108
-  test accuracy:	0.93210+/-0.02161
-  test auc-roc:	0.91711+/-0.03147
-  test auc-pr:		0.73934+/-0.08664
-
-  test loss:		0.18065
-  test accuracy:	0.93428+/-0.02234
-  test auc-roc:	0.92796+/-0.02906
-  test auc-pr:		0.76041+/-0.08327
-
-random 300000
-  test loss:		0.16663
-  test accuracy:	0.94084+/-0.01945
-  test auc-roc:	0.93659+/-0.02787
-  test auc-pr:		0.79017+/-0.08711
-
-correlated
-  test loss:		0.15933
-  test accuracy:	0.94169+/-0.02506
-  test auc-roc:	0.94500+/-0.02649
-  test auc-pr:		0.80914+/-0.07878
-
-  test loss:		0.15302
-  test accuracy:	0.94342+/-0.02494
-  test auc-roc:	0.95012+/-0.02519
-  test auc-pr:		0.82071+/-0.07227
-
-"""
 
 #-------------------------------------------------------------------------------------
 
@@ -95,11 +54,11 @@ nnmodel.test_model(test, batch_size, "test")
 nnmodel.save_all_metrics(filepath)
 
 # monitor/save test performance with parameters for each training epoch
-num_train_epochs = nnmodel.get_num_epochs()
-performance = fit.test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath)
+#num_train_epochs = nnmodel.get_num_epochs()
+#performance = fit.test_model_all(nnmodel, test, batch_size, num_train_epochs, filepath)
 
 # save test performance
-performance.save_metrics(filepath)
+#performance.save_metrics(filepath)
 
 
 
