@@ -20,12 +20,12 @@ def MotifSimulation_binary(filepath):
 	test = cPickle.load(f)
 	f.close()
 
-	X_train = train[0].transpose((0,1,2))
-	y_train = train[1]
-	X_val = cross_validation[0].transpose((0,1,2))
-	y_val = cross_validation[1]
-	X_test = test[0].transpose((0,1,2))
-	y_test = test[1]
+	X_train = train[0].transpose((0,1,2)).astype(np.float32)
+	y_train = train[1].astype(np.int32)
+	X_val = cross_validation[0].transpose((0,1,2)).astype(np.float32)
+	y_val = cross_validation[1].astype(np.int32)
+	X_test = test[0].transpose((0,1,2)).astype(np.float32)
+	y_test = test[1].astype(np.int32)
 
 	X_train = np.expand_dims(X_train, axis=3)
 	X_val = np.expand_dims(X_val, axis=3)

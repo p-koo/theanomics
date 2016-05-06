@@ -352,8 +352,13 @@ def build_loss(network, target_var, prediction, optimization):
 		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		loss = objectives.binary_crossentropy(prediction, target_var)
 
-	elif optimization["objective"] == 'mse':
+	elif optimization["objective"] == 'ols':
 		loss = objectives.squared_error(prediction, target_var)
+
+	elif optimization["objective"] == 'gls':
+		error = (target_var - prediction)
+		decor_error = T.dot(optimization["Linv"], error.T).T
+		loss = decor_error ** 2
 
 	#loss = loss.mean()
 	loss = objectives.aggregate(loss, mode='mean')

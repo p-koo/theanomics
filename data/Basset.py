@@ -32,7 +32,7 @@ def Basset(filepath, class_range=range(164), num_include=[]):
 	y_train = y_train[index,:]
 	X_train = np.transpose(np.array(trainmat['train_in']), axes=(0,1,3,2))
 	X_train = X_train[index,:,:,:]
-	train = (X_train, y_train)
+	train = (X_train.astype(np.float32), y_train.astype(np.int32))
 
 
 	print "loading validation data"
@@ -42,7 +42,7 @@ def Basset(filepath, class_range=range(164), num_include=[]):
 	y_valid = y_valid[index,:]
 	X_valid = np.transpose(np.array(trainmat['valid_in']), axes=(0,1,3,2))
 	X_valid = X_valid[index,:,:,:]
-	valid = (X_valid, y_valid)
+	valid = (X_valid.astype(np.float32), y_valid.astype(np.int32))
 
 	print "loading testing data"
 	y_test = np.array(trainmat['test_out'])
@@ -51,7 +51,7 @@ def Basset(filepath, class_range=range(164), num_include=[]):
 	y_test = y_test[index,:]
 	X_test = np.transpose(np.array(trainmat['test_in']), axes=(0,1,3,2))
 	X_test = X_test[index,:,:,:]
-	test = (X_test, y_test)
+	test = (X_test.astype(np.float32), y_test.astype(np.int32))
 	
 	return train, valid, test
 

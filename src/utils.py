@@ -34,7 +34,7 @@ def batch_generator(X, y, batch_size=128, shuffle=True):
 			excerpt = indices[start_idx:start_idx+batch_size]
 		else:
 			excerpt = slice(start_idx, start_idx+batch_size)
-		yield X[excerpt].astype('float32'), y[excerpt].astype('int32')
+		yield X[excerpt], y[excerpt]
 
 
 def one_hot_labels(label):

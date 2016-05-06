@@ -54,6 +54,10 @@ def load_model(model_name, shape, num_labels):
 		from .test_motif_model import test_motif_model
 		network, input_var, target_var, optimization = test_motif_model(shape, num_labels)
 
+	elif model_name == "rnac_model":
+		from .rnac_model import rnac_model
+		network, input_var, target_var, optimization = rnac_model(shape, num_labels)
+
 
 		
 

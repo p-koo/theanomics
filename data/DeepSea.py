@@ -35,7 +35,7 @@ def DeepSea(filepath, class_range=range(918), num_include=[]):
 	X_train = np.transpose(np.array(trainmat['trainxdata']), axes=(2,1,0))
 	X_train = X_train[index,:,:]
 	X_train = np.expand_dims(X_train, axis=3)
-	train = (X_train, y_train)
+	train = (X_train.astype(np.float32), y_train.astype(np.int32))
 
 	print "loading validation data"  
 	validmat = scipy.io.loadmat(os.path.join(filepath,'valid.mat'))
@@ -46,7 +46,7 @@ def DeepSea(filepath, class_range=range(918), num_include=[]):
 	X_valid = np.transpose(validmat['validxdata'],axes=(0,1,2)) 
 	X_valid = X_valid[index,:,:]
 	X_valid = np.expand_dims(X_valid, axis=3)
-	valid = (X_valid, y_valid)
+	valid = (X_valid.astype(np.float32), y_valid.astype(np.int32))
 
 	print "loading test data"
 	testmat = scipy.io.loadmat(os.path.join(filepath,'test.mat'))
@@ -57,7 +57,7 @@ def DeepSea(filepath, class_range=range(918), num_include=[]):
 	X_test = np.transpose(testmat['testxdata'],axes=(0,1,2))
 	X_test = X_test[index,:,:]
 	X_test = np.expand_dims(X_test, axis=3)
-	test = (X_test, y_test)
+	test = (X_test.astype(np.float32), y_test.astype(np.int32))
 
 	return train, valid, test 
 
