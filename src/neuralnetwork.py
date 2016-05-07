@@ -31,7 +31,8 @@ class NeuralNet:
 		self.network = network
 		self.input_var = input_var
 		self.target_var = target_var
-		self.optimization = optimization		
+		self.optimization = optimization	
+		self.objective = optimization["objective"]	
 		if 'learning_rate' in optimization:
 			self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
 			self.learning_rate = optimization['learning_rate']
@@ -43,9 +44,9 @@ class NeuralNet:
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
-		self.train_monitor = MonitorPerformance(name="train")
-		self.test_monitor = MonitorPerformance(name="test")
-		self.valid_monitor = MonitorPerformance(name="cross-validation")
+		self.train_monitor = MonitorPerformance(name="train", objective=self.objective, verbose=1)
+		self.test_monitor = MonitorPerformance(name="test", objective=self.objective, verbose=1)
+		self.valid_monitor = MonitorPerformance(name="cross-validation", objective=self.objective, verbose=1)
 
 
 	def reinitialize(self):
@@ -103,7 +104,7 @@ class NeuralNet:
 
 	def test_step(self, test, batch_size):
 
-		performance = MonitorPerformance()
+		performance = MonitorPerformance('test',self.objective, verbose=1)
 
 		if np.ndim(test[1]) == 2:
 			label = np.empty((1,test[1].shape[1]))
@@ -129,22 +130,32 @@ class NeuralNet:
 		"""Train a mini-batch --> single epoch"""
 
 		# set timer for epoch run
-		performance = MonitorPerformance(verbose)
+		performance = MonitorPerformance('train',self.objective, verbose)
 		performance.set_start_time(start_time = time.time())
 
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
 		batches = batch_generator(train[0], train[1], batch_size)
-		accuracy = 0
+		value = 0
 		for epoch in range(num_batches):
 			X, y = next(batches)
 			loss, prediction = self.train_fun(X, y)
-			accuracy += np.mean(np.round(prediction) == y)
+			value += self.train_metric(prediction, y)
 			performance.add_loss(loss)
-			performance.progress_bar(epoch+1., num_batches, accuracy/(epoch+1)*100)
+			performance.progress_bar(epoch+1., num_batches, value/(epoch+1))
 		print "" 
 		return performance.get_mean_loss()
 
+	def train_metric(self, prediction, y):
+		if self.objective == 'categorical':
+			return np.mean(np.argmax(prediction, axis=1) == y)
+		elif self.objective == 'binary':
+			return np.mean(np.round(prediction) == y)
+		else:
+			R = []
+			for i in range(prediction.shape[1]):
+				R.append(np.corrcoef(prediction[:,i], y[:,i]))
+			return np.mean(R)
 
 	def test_model(self, test, batch_size, name):
 		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
@@ -207,14 +218,17 @@ class MonitorPerformance():
 	"""helper class to monitor and store performance metrics during 
 	   training. This class uses the metrics for early stopping. """
 
-	def __init__(self, name = '', verbose=1):
-		self.loss = []
-		self.metric = np.zeros(3)
-		self.metric_std = np.zeros(3)
-		self.verbose = verbose
+	def __init__(self, name='', objective='binary', verbose=1):
 		self.name = name
-		self.roc = []
-		self.pr = []
+		self.objective = objective
+		self.verbose = verbose
+		if (objective == 'binary') | (objective == 'categorical'):
+			self.num_metrics = 3
+		else:
+			self.num_metrics = 3
+		self.loss = []
+		self.metric = np.zeros(self.num_metrics)
+		self.metric_std = np.zeros(self.num_metrics)	
 
 
 	def set_verbose(self, verbose):
@@ -224,39 +238,32 @@ class MonitorPerformance():
 	def add_loss(self, loss):
 		self.loss = np.append(self.loss, loss)
 
-
-	def add_metrics(self, mean, std):
-		if mean:
-			self.metric = np.vstack([self.metric, mean])
-		if std:
-			self.metric_std = np.vstack([self.metric_std, std])
-
+	def add_metrics(self, metrics):
+		self.metric = np.vstack([self.metric, metrics[0]])
+		self.metric_std = np.vstack([self.metric_std, metrics[1]])
 
 	def get_length(self):
 		return len(self.loss)
 
 	def update(self, loss, prediction, label):
-		mean, std, roc, pr = calculate_metrics(label, prediction)
+		metrics = calculate_metrics(label, prediction, self.objective)
 		self.add_loss(loss)
-		self.add_metrics(mean, std)
-		self.roc = roc
-		self.pr = pr
+		self.add_metrics(metrics)
 
 	def get_mean_loss(self):
 		return np.mean(self.loss)
 
 	def get_mean_values(self):
 		results = self.metric[-1,:]
-		return results[0], results[1], results[2]
-
+		return results
 
 	def get_error_values(self):
 		results = self.metric_std[-1,:]
-		return results[0], results[1], results[2]
+		return results
 
 
 	def get_min_loss(self):
-		min_loss = min(self.loss)
+ 		min_loss = min(self.loss)
 		min_index = np.argmin(self.loss)
 		return min_loss, min_index
 
@@ -280,21 +287,30 @@ class MonitorPerformance():
 		if self.verbose == 1:
 			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]/1.))
 			if self.metric.any():
-				accuracy, auc_roc, auc_pr = self.get_mean_values()
-				accuracy_std, auc_roc_std, auc_pr_std = self.get_error_values()
-				print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(accuracy, accuracy_std))
-				print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(auc_roc, auc_roc_std))
-				print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(auc_pr, auc_pr_std))
+				mean_vals = self.get_mean_values()
+				error_vals = self.get_error_values()
+				
+				if (self.objective == "binary") | (self.objective == "categorical"):
+					print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
+					print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
+					print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
+				elif (self.objective == 'ols') | (self.objective == 'gls'):
+					print("  " + name + " Pearson's R:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
+					print("  " + name + " rsquare:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
+					print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
 
-
-	def progress_bar(self, epoch, num_batches, accuracy, bar_length=30):
+	def progress_bar(self, epoch, num_batches, value, bar_length=30):
 		if self.verbose == 1:
 			remaining_time = (time.time()-self.start_time)*(num_batches-epoch)/epoch
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
-			%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), accuracy))
+			if (self.objective == "binary") | (self.objective == "categorical"):
+				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
+				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value*100))
+			elif (self.objective == 'ols') | (self.objective == 'gls'):
+				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
+				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
 			sys.stdout.flush()
 
 
@@ -307,8 +323,6 @@ class MonitorPerformance():
 		cPickle.dump(self.loss, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.metric, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.metric_std, f, protocol=cPickle.HIGHEST_PROTOCOL)
-		cPickle.dump(self.roc, f, protocol=cPickle.HIGHEST_PROTOCOL)
-		cPickle.dump(self.pr, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
 
 
@@ -360,6 +374,17 @@ def build_loss(network, target_var, prediction, optimization):
 		decor_error = T.dot(optimization["Linv"], error.T).T
 		loss = decor_error ** 2
 
+	"""
+		elif optimization["objective"] == 'ols':
+		index1, index2 = np.where(np.isnan(target_var)==False)
+		loss = objectives.squared_error(prediction[index1,index2], target_var[index1,index2])
+
+	elif optimization["objective"] == 'gls':
+		index1, index2 = np.where(np.isnan(target_var)==False)
+		error = (target_var[index1,index2] - prediction[index1,index2])
+		decor_error = T.dot(optimization["Linv"], error.T).T
+		loss = decor_error ** 2
+	"""
 	#loss = loss.mean()
 	loss = objectives.aggregate(loss, mode='mean')
 

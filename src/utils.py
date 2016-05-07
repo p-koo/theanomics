@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from six.moves import cPickle
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, accuracy_score, roc_auc_score
+from scipy import stats
 
 
 def make_directory(path, foldername, verbose=1):
@@ -46,55 +47,89 @@ def one_hot_labels(label):
 		label_expand[i, label[i]] = 1
 	return label_expand
 
+def pearson_corr_metric(label, prediction):
+	num_labels = label.shape[1]
+	corr = []
+	for i in range(num_labels):
+		corr.append(np.corrcoef(label[:,i], prediction[:,i]))
+	return corr
 
-def calculate_metrics(label, prediction):
+def rsquare_metric(label, prediction):
+	num_labels = label.shape[1]
+	
+	rsquare = []
+	slope = []
+	for i in range(num_labels):
+		y = label[:,i]
+		X = prediction[:,i]
+		m = np.dot(X,y)/np.dot(X, X)
+    	resid = y - m*X; 
+    	ym = y - np.mean(y); 
+    	rsqr2 = 1 - np.dot(resid.T,resid)/ np.dot(ym.T, ym);
+    	rsquare.append(rsqr2)
+    	slope.append(m)
+    	print m
+	return rsquare, slope
+	"""
+	rsquare = []
+	for i in range(num_labels):
+		slope, intercept, r_value, p_value, std_err = stats.linregress(label[:,i],prediction[:,i])
+		rsquare.append(r_value**2)
+	return rsquare, slope
+	"""
+
+def accuracy_metrics(label, prediction):
+	num_labels = label.shape[1]
+	accuracy = np.zeros((num_labels))
+	for i in range(num_labels):
+		score = accuracy_score(label[:,i], np.round(prediction[:,i]))
+		accuracy[i] = score
+	return accuracy
+
+def roc_metrics(label, prediction):
+	num_labels = label.shape[1]
+	roc = []
+	auc_roc = np.zeros((num_labels))
+	for i in range(num_labels):
+		fpr, tpr, thresholds = roc_curve(label[:,i], prediction[:,i])
+		score = auc(fpr, tpr)
+		auc_roc[i]= score
+		roc.append((fpr, tpr))
+	return auc_roc, roc
+
+def pr_metrics(label, prediction):
+	num_labels = label.shape[1]
+	pr = []
+	auc_pr = np.zeros((num_labels))
+	for i in range(num_labels):
+		precision, recall, thresholds = precision_recall_curve(label[:,i], prediction[:,i])
+		score = auc(recall, precision)
+		auc_pr[i] = score
+		pr.append((precision, recall))
+	return auc_pr, pr
+
+def calculate_metrics(label, prediction, objective):
 	"""calculate metrics for classification"""
 
-	def accuracy_metrics(label, prediction):
-		num_labels = label.shape[1]
-		accuracy = np.zeros((num_labels))
-		for i in range(num_labels):
-			score = accuracy_score(label[:,i], np.round(prediction[:,i]))
-			accuracy[i] = score
-		return accuracy
-
-	def roc_metrics(label, prediction):
-		num_labels = label.shape[1]
-		roc = []
-		auc_roc = np.zeros((num_labels))
-		for i in range(num_labels):
-			fpr, tpr, thresholds = roc_curve(label[:,i], prediction[:,i])
-			score = auc(fpr, tpr)
-			auc_roc[i]= score
-			roc.append((fpr, tpr))
-		return auc_roc, roc
-
-	def pr_metrics(label, prediction):
-		num_labels = label.shape[1]
-		pr = []
-		auc_pr = np.zeros((num_labels))
-		for i in range(num_labels):
-			precision, recall, thresholds = precision_recall_curve(label[:,i], prediction[:,i])
-			score = auc(recall, precision)
-			auc_pr[i] = score
-			pr.append((precision, recall))
-		return auc_pr, pr
-
-	num_samples = len(prediction)
-	ndim = np.ndim(label)
-	if ndim == 1:
-		label = one_hot_labels(label)
-
-	accuracy = accuracy_metrics(label, prediction)
-	auc_roc, roc = roc_metrics(label, prediction)
-	auc_pr, pr = pr_metrics(label, prediction)
-	mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
-	std = [np.std(accuracy), np.std(auc_roc), np.std(auc_pr)]
-	#print "ROC"
-	#print auc_roc
-	#print "PR"
-	#print auc_pr
-	return mean, std, roc, pr
+	if (objective == "binary") | (objective == "categorical"):
+		ndim = np.ndim(label)
+		if ndim == 1:
+			label = one_hot_labels(label)
+		accuracy = accuracy_metrics(label, prediction)
+		auc_roc, roc = roc_metrics(label, prediction)
+		auc_pr, pr = pr_metrics(label, prediction)
+		mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
+		std = [np.nanstd(accuracy), np.nanstd(auc_roc), np.nanstd(auc_pr)]
+		#print "ROC"
+		#print auc_roc
+		#print "PR"
+		#print auc_pr
+	elif (objective == 'ols') | (objective == 'gls'):
+		corr = pearson_corr_metric(label, prediction)
+		rsquare, slope = rsquare_metric(label, prediction)
+		mean = [np.nanmean(corr), np.nanmean(rsquare), np.nanmean(slope)]
+		std = [np.nanstd(corr), np.nanstd(rsquare), np.nanmean(slope)]
+	return [mean, std]
 
 
 def get_performance(savepath):

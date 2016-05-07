@@ -100,11 +100,26 @@ Model: super deep (11 conv layers)
 --------------------------------------
 Comparison of deeper networks
 --------------------------------------
-DNAse (0-40)
-Model: deep (7 conv layers)
 
+RNAcompete
 
+Model: 3 conv layer
+Epoch 1 out of 500 
+[==============================] 100.0% -- time=0s -- loss=2.84032 -- correlation=0.73  
+  valid loss:   2.34544
+  valid Pearson's R:  0.77996+/-0.24867
+  valid rsquare:  0.55991+/-0.16382
 
+OLS:
+  test loss:    2.04983
+  test Pearson's R: 0.81000+/-0.22233
+  test rsquare: 0.62000+/-0.16329
+  test slope: 0.13640+/-0.13640
+
+GLS:
+  test loss:    0.83251
+  test Pearson's R: 0.80674+/-0.22159
+  test rsquare: 0.61348+/-0.15330
 
 __________________________________________________________
 __________________________________________________________

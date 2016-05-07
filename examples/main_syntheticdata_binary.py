@@ -15,7 +15,7 @@ np.random.seed(247) # for reproducibility
 
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
+filepath = os.path.join(datapath, 'synthetic_random_motifs_100000.hdf5')
 #filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
@@ -30,7 +30,7 @@ nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
-outputname = 'binary'
+outputname = 'test'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 

@@ -35,9 +35,9 @@ def MotifSimulation_categorical(filepath):
 	y_val = np.argmax(y_val, axis=1)
 	y_test = np.argmax(y_test, axis=1)
 
-	train = (X_train, y_train)
-	valid = (X_val, y_val)
-	test = (X_test, y_test)
+	train = (X_train.astype(np.float32), y_train.astype(np.int32))
+	valid = (X_val.astype(np.float32), y_val.astype(np.int32))
+	test = (X_test.astype(np.float32), y_test.astype(np.int32))
 
 	return train, valid, test
 

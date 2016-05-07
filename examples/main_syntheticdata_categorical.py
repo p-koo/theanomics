@@ -34,7 +34,8 @@ filepath = os.path.join(datapath, outputname)
 
 # train model
 batch_size = 128
-nnmodel = fit.train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=2, verbose=1, filepath=filepath)
+nnmodel = fit.train_minibatch(nnmodel, train, valid, batch_size=128, num_epochs=500, 
+			patience=10, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
 min_loss, min_index = nnmodel.get_min_loss()

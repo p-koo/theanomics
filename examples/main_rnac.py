@@ -18,7 +18,6 @@ name = 'RNA_compete'
 datapath = '/home/peter/Data/DeepBind/rnac/'
 filepath = os.path.join(datapath, 'rnac.hdf5')
 train, valid, test = load_data(name, filepath)
-print(train[0].shape)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
@@ -26,11 +25,15 @@ num_labels = np.round(train[1].shape[1])
 C = np.cov(train[1].T)
 L = np.linalg.cholesky(C)
 Linv = np.linalg.inv(L)
-
-f = open('/home/peter/Code/DeepMotifs/examples/Linv.pickle','wb')
+f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','wb')
 cPickle.dump(Linv, f)
 f.close()
 
+"""
+train = (train[0], np.dot(Linv, train[1].T).T)
+valid = (valid[0], np.dot(Linv, valid[1].T).T)
+test = (test[0], np.dot(Linv, test[1].T).T)
+"""
 #-------------------------------------------------------------------------------------
 
 # build model
@@ -39,7 +42,7 @@ nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
-outputname = 'ols'
+outputname = 'gls'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 
@@ -47,7 +50,7 @@ filepath = os.path.join(datapath, outputname)
 batch_size = 100
 #nnmodel = fit.anneal_train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=5, verbose=1, filepath=filepath)
 nnmodel = fit.train_minibatch(nnmodel, train, valid, batch_size=batch_size, num_epochs=500, 
-			patience=10, verbose=1, filepath=filepath)
+			patience=20, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
 min_loss, min_index = nnmodel.get_min_loss()
