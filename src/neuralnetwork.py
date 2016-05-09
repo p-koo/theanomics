@@ -333,7 +333,7 @@ class MonitorPerformance():
 def build_optimizer(network, input_var, target_var, optimization, learning_rate):
 	# build loss function
 	prediction = layers.get_output(network['output'], deterministic=False)
-	loss = build_loss(network['output'], target_var, prediction, optimization)
+	loss = build_loss(network['output'], target_var, T.cast(prediction, 'int32'), optimization)
 
 	# calculate and clip gradients
 	params = layers.get_all_params(network['output'], trainable=True)    
@@ -365,6 +365,10 @@ def build_loss(network, target_var, prediction, optimization):
 	elif optimization["objective"] == 'binary':
 		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		loss = objectives.binary_crossentropy(prediction, target_var)
+
+	elif optimization["objective"] == 'weight_binary':
+		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
+		loss = T.dot(optimization['Linv'], loss.T).T
 
 	elif optimization["objective"] == 'ols':
 		loss = objectives.squared_error(prediction, target_var)

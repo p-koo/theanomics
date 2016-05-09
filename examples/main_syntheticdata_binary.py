@@ -8,6 +8,7 @@ from src import train as fit
 from src import make_directory 
 from models import load_model
 from data import load_data
+from six.moves import cPickle
 np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
@@ -15,12 +16,19 @@ np.random.seed(247) # for reproducibility
 
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_random_motifs_100000.hdf5')
+filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000.hdf5')
 #filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
+
+C = np.cov(train[1].T)
+L = np.linalg.cholesky(C)
+Linv = np.linalg.inv(L)
+f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','wb')
+cPickle.dump(Linv, f)
+f.close()
 
 #-------------------------------------------------------------------------------------
 

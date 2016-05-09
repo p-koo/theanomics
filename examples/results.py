@@ -35,6 +35,21 @@ random
   valid auc-roc:  0.92753+/-0.02201
   valid auc-pr:   0.79954+/-0.05636
 
+decorr (GLS):
+  test loss:    0.29031
+  test accuracy:  0.89378+/-0.02789
+  test auc-roc: 0.86402+/-0.07155
+  test auc-pr:    0.70588+/-0.10900
+
+
+Epoch 1 out of 500 
+[==============================] 100.0% -- time=0s -- loss=0.30374 -- accuracy=88.34%   
+  valid loss:   0.28344
+  valid accuracy: 0.89235+/-0.02730
+  valid auc-roc:  0.86588+/-0.07096
+  valid auc-pr:   0.71263+/-0.10454
+
+
 --------------------------------------
 N = 300000
 Model: Basset (3 conv layers)
@@ -111,10 +126,13 @@ Epoch 1 out of 500
   valid rsquare:  0.55991+/-0.16382
 
 OLS:
-  test loss:    2.04983
-  test Pearson's R: 0.81000+/-0.22233
-  test rsquare: 0.62000+/-0.16329
-  test slope: 0.13640+/-0.13640
+Epoch 1 out of 500 
+[==============================] 100.0% -- time=0s -- loss=0.40441 -- correlation=0.64710  
+  valid loss:   0.14002
+  valid Pearson's R:  0.71266+/-0.31153
+  valid rsquare:  0.19781+/-0.13769
+  valid slope:    0.84846+/-0.24061
+
 
 GLS:
   test loss:    0.83251

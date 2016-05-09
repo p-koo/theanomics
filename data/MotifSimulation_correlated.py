@@ -11,7 +11,7 @@ def MotifSimulation_correlated(filepath):
 
 	trainmat = h5py.File(filepath, 'r')
 	X_train = np.array(trainmat['trainx']).astype(np.float32)
-	y_train = np.array(trainmat['trainy']).astype(np.int32)
+	y_train = np.array(trainmat['trainy']).astype(np.float32)
 
 	X_val = np.array(trainmat['validx']).astype(np.float32)
 	y_val = np.array(trainmat['validy']).astype(np.int32)

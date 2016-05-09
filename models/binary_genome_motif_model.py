@@ -3,6 +3,9 @@ import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 from build_network import build_network
+from six.moves import cPickle
+import numpy as np
+import theano
 
 def binary_genome_motif_model(shape, num_labels):
 
@@ -193,9 +196,13 @@ def binary_genome_motif_model(shape, num_labels):
 	          'num_units': num_labels, 
 	          'W': GlorotUniform(),
 	          'b': Constant(0.05),
-	          'activation': 'sigmoid',
+	          'activation': 'linear',
   			  'name': 'output'
   			  }
+	
+	f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','rb')
+	Linv = cPickle.load(f)
+	f.close()
 
 	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, dense1, dense2, output]
 	network = build_network(model_layers)
@@ -203,6 +210,7 @@ def binary_genome_motif_model(shape, num_labels):
 	# optimization parameters
 	optimization = {"objective": "binary",
 	                "optimizer": "adam",
+	                #"Linv": Linv, #np.array(L, dtype=theano.config.floatX),
 #	                "optimizer": "nesterov_momentum",
 	                "learning_rate": 0.001,	                
 	                "beta1": .9,
