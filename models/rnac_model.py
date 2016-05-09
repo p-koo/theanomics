@@ -189,7 +189,7 @@ def rnac_model(shape, num_labels):
 	f.close()
 
 	# optimization parameters
-	optimization = {"objective": "ols",
+	optimization = {"objective": "gls",
 	                "optimizer": "adam",
 	                "Linv": Linv,
 	                "learning_rate": 0.001,	                

@@ -70,13 +70,6 @@ def rsquare_metric(label, prediction):
     	slope.append(m)
     	print m
 	return rsquare, slope
-	"""
-	rsquare = []
-	for i in range(num_labels):
-		slope, intercept, r_value, p_value, std_err = stats.linregress(label[:,i],prediction[:,i])
-		rsquare.append(r_value**2)
-	return rsquare, slope
-	"""
 
 def accuracy_metrics(label, prediction):
 	num_labels = label.shape[1]

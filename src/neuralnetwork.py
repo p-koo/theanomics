@@ -333,7 +333,7 @@ class MonitorPerformance():
 def build_optimizer(network, input_var, target_var, optimization, learning_rate):
 	# build loss function
 	prediction = layers.get_output(network['output'], deterministic=False)
-	loss = build_loss(network['output'], target_var, T.cast(prediction, 'int32'), optimization)
+	loss = build_loss(network['output'], target_var, prediction, optimization)
 
 	# calculate and clip gradients
 	params = layers.get_all_params(network['output'], trainable=True)    
