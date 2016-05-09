@@ -128,7 +128,7 @@ def calculate_metrics(label, prediction, objective):
 		corr = pearson_corr_metric(label, prediction)
 		rsquare, slope = rsquare_metric(label, prediction)
 		mean = [np.nanmean(corr), np.nanmean(rsquare), np.nanmean(slope)]
-		std = [np.nanstd(corr), np.nanstd(rsquare), np.nanmean(slope)]
+		std = [np.nanstd(corr), np.nanstd(rsquare), np.nanstd(slope)]
 	return [mean, std]
 
 

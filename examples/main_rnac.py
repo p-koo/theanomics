@@ -42,7 +42,7 @@ nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
-outputname = 'gls'
+outputname = 'ols'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 

@@ -378,17 +378,6 @@ def build_loss(network, target_var, prediction, optimization):
 		decor_error = T.dot(optimization["Linv"], error.T).T
 		loss = decor_error ** 2
 
-	"""
-		elif optimization["objective"] == 'ols':
-		index1, index2 = np.where(np.isnan(target_var)==False)
-		loss = objectives.squared_error(prediction[index1,index2], target_var[index1,index2])
-
-	elif optimization["objective"] == 'gls':
-		index1, index2 = np.where(np.isnan(target_var)==False)
-		error = (target_var[index1,index2] - prediction[index1,index2])
-		decor_error = T.dot(optimization["Linv"], error.T).T
-		loss = decor_error ** 2
-	"""
 	#loss = loss.mean()
 	loss = objectives.aggregate(loss, mode='mean')
 
