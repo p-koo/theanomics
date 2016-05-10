@@ -22,7 +22,7 @@ shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
 # calculate cholesky decomposition of covariance matrix and save
-C = np.cov(train[1].T)
+C = np.cov(np.vstack([train[1],valid[1]]).T)
 L = np.linalg.cholesky(C)
 Linv = np.linalg.inv(L)
 f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','wb')
@@ -42,7 +42,7 @@ nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
-outputname = 'gls'
+outputname = 'gls_3'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 

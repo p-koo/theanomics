@@ -56,19 +56,17 @@ def pearson_corr_metric(label, prediction):
 
 def rsquare_metric(label, prediction):
 	num_labels = label.shape[1]
-	
 	rsquare = []
 	slope = []
 	for i in range(num_labels):
 		y = label[:,i]
 		X = prediction[:,i]
 		m = np.dot(X,y)/np.dot(X, X)
-    	resid = y - m*X; 
-    	ym = y - np.mean(y); 
-    	rsqr2 = 1 - np.dot(resid.T,resid)/ np.dot(ym.T, ym);
-    	rsquare.append(rsqr2)
-    	slope.append(m)
-    	print m
+		resid = y - m*X; 
+		ym = y - np.mean(y); 
+		rsqr2 = 1 - np.dot(resid.T,resid)/ np.dot(ym.T, ym);
+		rsquare.append(rsqr2)
+		slope.append(m)
 	return rsquare, slope
 
 def accuracy_metrics(label, prediction):

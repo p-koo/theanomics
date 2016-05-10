@@ -18,18 +18,24 @@ name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
 filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000.hdf5')
 #filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
+
+
+name = 'MotifSimulation_binary'
+datapath = '/home/peter/Data/SequenceMotif'
+filepath = os.path.join(datapath, 'N=100000_S=200_M=30_G=20_data.pickle')
+
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
-
+"""
 C = np.cov(train[1].T)
 L = np.linalg.cholesky(C)
 Linv = np.linalg.inv(L)
 f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','wb')
 cPickle.dump(Linv, f)
 f.close()
-
+"""
 #-------------------------------------------------------------------------------------
 
 # build model
