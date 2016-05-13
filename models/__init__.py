@@ -15,7 +15,7 @@ from .MNIST_CNN_model import MNIST_CNN_model
 from .test_motif_model import test_motif_model
 from .rnac_model import rnac_model
 
-
+from .conv_autoencoder import conv_autoencoder
 __all__ = [
   		   'load_model',
   		   'build_network',
@@ -30,5 +30,6 @@ __all__ = [
          'conv_LSTM_model',
          'MNIST_CNN_model',
          'test_motif_model',
-         'rnac_model'
+         'rnac_model',
+         'conv_autoencoder'
            ]

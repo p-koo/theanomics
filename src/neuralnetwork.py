@@ -124,7 +124,25 @@ class NeuralNet:
 			label = np.concatenate((label, y), axis=0)
 
 		return performance.get_mean_loss(), prediction[1::], label[1::]
-		
+
+	def train_step_ae(self,  train, batch_size, verbose=1):        
+		"""Train a mini-batch --> single epoch"""
+
+		# set timer for epoch run
+		performance = MonitorPerformance('train',self.objective, verbose)
+		performance.set_start_time(start_time = time.time())
+
+		# train on mini-batch with random shuffling
+		num_batches = train[0].shape[0] // batch_size
+		batches = batch_generator(train[0], train[1], batch_size)
+		value = 0
+		for epoch in range(num_batches):
+			X, y = next(batches)
+			loss, prediction = self.train_fun(X)
+			performance.add_loss(loss)
+			performance.progress_bar(epoch+1., num_batches, 0)
+		print "" 
+		return performance.get_mean_loss()		
 
 	def train_step(self,  train, batch_size, verbose=1):        
 		"""Train a mini-batch --> single epoch"""
@@ -169,7 +187,7 @@ class NeuralNet:
 			self.test_monitor.update(test_loss, test_prediction, test_label)
 			self.test_monitor.print_results(name)
 		return test_loss
-
+	
 	def save_metrics(self, filepath, name):
 		if name == "train":
 			self.train_monitor.save_metrics(filepath)
@@ -290,7 +308,7 @@ class MonitorPerformance():
 				mean_vals = self.get_mean_values()
 				error_vals = self.get_error_values()
 				
-				if (self.objective == "binary") | (self.objective == "categorical"):
+				if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary"):
 					print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 					print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
 					print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
@@ -305,12 +323,15 @@ class MonitorPerformance():
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			if (self.objective == "binary") | (self.objective == "categorical"):
+			if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary"):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value*100))
 			elif (self.objective == 'ols') | (self.objective == 'gls'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
+			elif (self.objective == 'autoencoder'):
+				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f  " \
+				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss()))
 			sys.stdout.flush()
 
 
@@ -331,27 +352,51 @@ class MonitorPerformance():
 #------------------------------------------------------------------------------------------
 
 def build_optimizer(network, input_var, target_var, optimization, learning_rate):
-	# build loss function
-	prediction = layers.get_output(network['output'], deterministic=False)
-	loss = build_loss(network['output'], target_var, prediction, optimization)
 
-	# calculate and clip gradients
-	params = layers.get_all_params(network['output'], trainable=True)    
-	if "weight_norm" in optimization:
-		grad = calculate_gradient(loss, params, weight_norm=optimization["weight_norm"])
+	if optimization["objective"] == 'autoencoder':
+		prediction = layers.get_output(network['output'], deterministic=False)
+		loss = build_loss(network['output'], input_var, prediction, optimization)
+
+		# calculate and clip gradients
+		params = layers.get_all_params(network['output'], trainable=True)    
+		if "weight_norm" in optimization:
+			grad = calculate_gradient(loss, params, weight_norm=optimization["weight_norm"])
+		else:
+			grad = calculate_gradient(loss, params)
+
+		# setup parameter updates
+		update_op = build_updates(grad, params, optimization, learning_rate)
+
+		# test/validation set 
+		test_prediction = layers.get_output(network['output'], deterministic=True)
+		test_loss = build_loss(network['output'], input_var, test_prediction, optimization)
+
+		# create theano function
+		train_fun = theano.function([input_var], [loss, prediction], updates=update_op)
+		test_fun = theano.function([input_var], [test_loss, test_prediction])
+
 	else:
-		grad = calculate_gradient(loss, params)
-	  
-	# setup parameter updates
-	update_op = build_updates(grad, params, optimization, learning_rate)
+		# build loss function
+		prediction = layers.get_output(network['output'], deterministic=False)
+		loss = build_loss(network['output'], target_var, prediction, optimization)
 
-	# test/validation set 
-	test_prediction = layers.get_output(network['output'], deterministic=True)
-	test_loss = build_loss(network['output'], target_var, test_prediction, optimization)
+		# calculate and clip gradients
+		params = layers.get_all_params(network['output'], trainable=True)    
+		if "weight_norm" in optimization:
+			grad = calculate_gradient(loss, params, weight_norm=optimization["weight_norm"])
+		else:
+			grad = calculate_gradient(loss, params)
+		  
+		# setup parameter updates
+		update_op = build_updates(grad, params, optimization, learning_rate)
 
-	# create theano function
-	train_fun = theano.function([input_var, target_var], [loss, prediction], updates=update_op)
-	test_fun = theano.function([input_var, target_var], [test_loss, test_prediction])
+		# test/validation set 
+		test_prediction = layers.get_output(network['output'], deterministic=True)
+		test_loss = build_loss(network['output'], target_var, test_prediction, optimization)
+
+		# create theano function
+		train_fun = theano.function([input_var, target_var], [loss, prediction], updates=update_op)
+		test_fun = theano.function([input_var, target_var], [test_loss, test_prediction])
 
 	return train_fun, test_fun
 
@@ -366,9 +411,28 @@ def build_loss(network, target_var, prediction, optimization):
 		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		loss = objectives.binary_crossentropy(prediction, target_var)
 
-	elif optimization["objective"] == 'weight_binary':
+	elif optimization["objective"] == 'multi-binary':
+		prediction = T.clip(prediction, 1e-7, 1-1e-7)
 		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
-		loss = T.dot(optimization['Linv'], loss.T).T
+				
+		def interaction(rho, u):
+			#diag = T.diag(T.dot(rho, u.T).dot(u))
+			diag = T.diag(T.dot(u,T.dot(rho, u.T)))
+			return diag
+
+		#u = target_var*(target_var - prediction)/T.sqrt(prediction*(1-prediction))
+		#second_order = interaction(optimization["rho_ij"], loss)
+		
+		# 3rd order correlation terms
+		#rho_ijk = optimization["rho_ijk"]
+		#diag = T.diag(T.dot(rho_ijk, u.T).dot(u))
+				
+		#correction = T.log(1 + second_order)
+		correction = T.dot(optimization["rho_ij"],loss.T).T
+		loss = T.diag(T.dot(correction,correction.T)) #+ loss.sum(axis=1) 
+
+	elif optimization["objective"] == 'autoencoder':
+		loss = objectives.squared_error(prediction, target_var)
 
 	elif optimization["objective"] == 'ols':
 		loss = objectives.squared_error(prediction, target_var)

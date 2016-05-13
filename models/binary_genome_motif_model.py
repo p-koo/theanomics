@@ -200,9 +200,9 @@ def binary_genome_motif_model(shape, num_labels):
   			  'name': 'output'
   			  }
 	
-	f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','rb')
-	Linv = cPickle.load(f)
-	f.close()
+	#f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','rb')
+	#rho_ij = cPickle.load(f)
+	#f.close()
 
 	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, dense1, dense2, output]
 	network = build_network(model_layers)
@@ -210,7 +210,7 @@ def binary_genome_motif_model(shape, num_labels):
 	# optimization parameters
 	optimization = {"objective": "binary",
 	                "optimizer": "adam",
-	                #"Linv": Linv, #np.array(L, dtype=theano.config.floatX),
+	                #"rho_ij": rho_ij, #np.array(L, dtype=theano.config.floatX),
 #	                "optimizer": "nesterov_momentum",
 	                "learning_rate": 0.001,	                
 	                "beta1": .9,

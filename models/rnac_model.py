@@ -6,7 +6,7 @@ from build_network import build_network
 from six.moves import cPickle
 
 def rnac_model(shape, num_labels):
-	"""
+	#"""
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
 
@@ -203,4 +203,4 @@ def rnac_model(shape, num_labels):
 	                }
 	                
 	return network, input_var, target_var, optimization
-	#"""
+	"""

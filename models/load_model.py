@@ -58,6 +58,12 @@ def load_model(model_name, shape, num_labels):
 		from .rnac_model import rnac_model
 		network, input_var, target_var, optimization = rnac_model(shape, num_labels)
 
+	elif model_name == "conv_autoencoder":
+		from .conv_autoencoder import conv_autoencoder
+		network, input_var, target_var, optimization = conv_autoencoder(shape, num_labels)
+
+
+		
 
 		
 

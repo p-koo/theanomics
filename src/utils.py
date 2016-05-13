@@ -102,7 +102,7 @@ def pr_metrics(label, prediction):
 def calculate_metrics(label, prediction, objective):
 	"""calculate metrics for classification"""
 
-	if (objective == "binary") | (objective == "categorical"):
+	if (objective == "binary") | (objective == "categorical") | (objective == "multi-binary"):
 		ndim = np.ndim(label)
 		if ndim == 1:
 			label = one_hot_labels(label)

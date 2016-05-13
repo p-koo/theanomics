@@ -29,22 +29,28 @@ correlated:
   test auc-roc:   0.88072+/-0.07354
   test auc-pr:    0.72204+/-0.11390
 
+  test loss:      0.26770
+  test accuracy:  0.89611+/-0.02818
+  test auc-roc:   0.88083+/-0.07383
+  test auc-pr:    0.72233+/-0.11381
+
 random
   valid loss:     0.23036
   valid accuracy: 0.90839+/-0.01586
   valid auc-roc:  0.92753+/-0.02201
   valid auc-pr:   0.79954+/-0.05636
 
+
 decorr (GLS):
-  test loss:    0.29031
+  test loss:      0.29031
   test accuracy:  0.89378+/-0.02789
-  test auc-roc: 0.86402+/-0.07155
+  test auc-roc:   0.86402+/-0.07155
   test auc-pr:    0.70588+/-0.10900
 
 
 Epoch 1 out of 500 
 [==============================] 100.0% -- time=0s -- loss=0.30374 -- accuracy=88.34%   
-  valid loss:   0.28344
+  valid loss:     0.28344
   valid accuracy: 0.89235+/-0.02730
   valid auc-roc:  0.86588+/-0.07096
   valid auc-pr:   0.71263+/-0.10454
@@ -76,11 +82,21 @@ correlated
   test auc-roc:   0.88656+/-0.07149
   test auc-pr:    0.73059+/-0.11109
 
+  test loss = 0.26441
+  acc 0.89629 +/- 0.02778
+  roc 0.885+/-0.0713
+  pr 0.72874 +/- 0.1108
+
 random
   test loss:      0.17300
   test accuracy:  0.93249+/-0.01993
   test auc-roc:   0.95876+/-0.01724
   test auc-pr:    0.87862+/-0.05194
+
+  test loss:      0.17258
+  test accuracy:  0.93278+/-0.01994
+  test auc-roc:   0.95892+/-0.01727
+  test auc-pr:    0.87959+/-0.05185
 
 --------------------------------------
 Comparison of deeper networks
@@ -119,25 +135,44 @@ Comparison of deeper networks
 RNAcompete
 
 Model: 3 conv layer
-Epoch 1 out of 500 
-[==============================] 100.0% -- time=0s -- loss=2.84032 -- correlation=0.73  
-  valid loss:   2.34544
-  valid Pearson's R:  0.77996+/-0.24867
-  valid rsquare:  0.55991+/-0.16382
 
 OLS:
-Epoch 1 out of 500 
-[==============================] 100.0% -- time=0s -- loss=0.40441 -- correlation=0.64710  
-  valid loss:   0.14002
-  valid Pearson's R:  0.71266+/-0.31153
-  valid rsquare:  0.19781+/-0.13769
-  valid slope:    0.84846+/-0.24061
-
+mu
+  test loss:        1.77265
+  test Pearson's R: 0.83048+/-0.20848
+  test rsquare:     0.46605+/-0.19379
+  test slope:       1.05217+/-0.05448
+zero
+  test loss:        1.78310
+  test Pearson's R: 0.83136+/-0.20720
+  test rsquare:     0.46786+/-0.19331
+  test slope:       1.05399+/-0.06156
+log
+  test loss:        0.03985
+  test Pearson's R: 0.81860+/-0.22368
+  test rsquare:     0.43981+/-0.20366
+  test slope:       1.02875+/-0.07990
 
 GLS:
-  test loss:    0.83251
-  test Pearson's R: 0.80674+/-0.22159
-  test rsquare: 0.61348+/-0.15330
+mu
+  test loss:        0.79750
+  test Pearson's R: 0.83180+/-0.20433
+  test rsquare:     0.46658+/-0.18343
+  test slope:       1.25920+/-0.06662
+
+zero  
+  test loss:        0.79824
+  test Pearson's R: 0.83419+/-0.20199
+  test rsquare:     0.47273+/-0.18401
+  test slope:       1.19756+/-0.05781
+
+log
+  test loss:        0.82407
+  test Pearson's R: 0.82669+/-0.21514
+  test rsquare:     0.45758+/-0.20030
+  test slope:       1.18893+/-0.06197
+
+compare ols and gls by making distribution of errors on test set
 
 __________________________________________________________
 __________________________________________________________

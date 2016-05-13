@@ -16,35 +16,47 @@ np.random.seed(247) # for reproducibility
 
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000.hdf5')
-#filepath = os.path.join(datapath, 'synthetic_random_motifs_300000.hdf5')
+#filepath = os.path.join(datapath, 'synthetic_correlated_motifs_300000_3.hdf5')
+filepath = os.path.join(datapath, 'synthetic_random_motifs_300000_2.hdf5')
 
-
+"""
 name = 'MotifSimulation_binary'
 datapath = '/home/peter/Data/SequenceMotif'
 filepath = os.path.join(datapath, 'N=100000_S=200_M=30_G=20_data.pickle')
-
+"""
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
-
 """
-C = np.cov(train[1].T)
-L = np.linalg.cholesky(C)
+# calculate correlations
+labels = np.vstack([train[1], valid[1]])
+N = labels.shape[0]
+rho_ij = np.zeros((num_labels, num_labels))
+for i in range(num_labels):
+    p_i = np.sum(labels[:,i])/N
+    for j in range(num_labels):
+        p_j = np.sum(labels[:,j])/N    
+        p_ij = np.sum(labels[:,i]*labels[:,j])/N
+        norm = np.sqrt(p_i*(1-p_i)) * np.sqrt(p_j*(1-p_j))
+        rho_ij[i,j] = (p_ij - p_i*p_j)#/norm
+L = np.linalg.cholesky(rho_ij)
 Linv = np.linalg.inv(L)
-f = open('/home/peter/Code/Deepomics/examples/Linv.pickle','wb')
-cPickle.dump(Linv, f)
+rho_ij = Linv
+f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','wb')
+cPickle.dump(rho_ij, f)
 f.close()
 """
+
+
 #-------------------------------------------------------------------------------------
 
 # build model
 model_name = "binary_genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
-nnmodel.print_layers()
+#nnmodel.print_layers()
 
 # set output file paths
-outputname = 'test'
+outputname = 'correlated_3'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
 

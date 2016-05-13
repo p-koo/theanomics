@@ -16,7 +16,7 @@ np.random.seed(247) # for reproducibility
 
 name = 'RNA_compete'
 datapath = '/home/peter/Data/DeepBind/rnac/'
-filepath = os.path.join(datapath, 'rnac.hdf5')
+filepath = os.path.join(datapath, 'rnac_zero.hdf5')
 train, valid, test = load_data(name, filepath)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
@@ -42,12 +42,12 @@ nnmodel = NeuralNet(model_name, shape, num_labels)
 nnmodel.print_layers()
 
 # set output file paths
-outputname = 'gls_3'
+outputname = 'log_gls_5'
 datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, outputname)
-
 # train model
 batch_size = 100
+
 #nnmodel = fit.anneal_train_valid_minibatch(nnmodel, train, valid, batch_size, num_epochs=500, patience=5, verbose=1, filepath=filepath)
 nnmodel = fit.train_minibatch(nnmodel, train, valid, batch_size=batch_size, num_epochs=500, 
 			patience=20, verbose=1, filepath=filepath)

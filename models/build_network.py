@@ -75,7 +75,7 @@ def build_decode_layers(model_layers, network, last_layer):
 			newlayer = name+'_dropout_inv' # str(counter) + '_' + name+'_dropout'
 			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
 			lastlayer = newlayer
-
+	network['output'] = network[lastlayer]
 
 	return network
 
