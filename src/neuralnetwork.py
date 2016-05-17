@@ -308,7 +308,7 @@ class MonitorPerformance():
 				mean_vals = self.get_mean_values()
 				error_vals = self.get_error_values()
 				
-				if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary"):
+				if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary") | (self.objective == 'hinge'):
 					print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 					print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
 					print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
@@ -323,7 +323,7 @@ class MonitorPerformance():
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
 			spaces = ' '*int(bar_length-round(percent*bar_length))
-			if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary"):
+			if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary") | (self.objective == 'hinge'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value*100))
 			elif (self.objective == 'ols') | (self.objective == 'gls'):
@@ -411,25 +411,15 @@ def build_loss(network, target_var, prediction, optimization):
 		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		loss = objectives.binary_crossentropy(prediction, target_var)
 
-	elif optimization["objective"] == 'multi-binary':
-		prediction = T.clip(prediction, 1e-7, 1-1e-7)
-		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
-				
+	elif optimization["objective"] == 'multi-binary':		
 		def interaction(rho, u):
-			#diag = T.diag(T.dot(rho, u.T).dot(u))
 			diag = T.diag(T.dot(u,T.dot(rho, u.T)))
-			return diag
-
-		#u = target_var*(target_var - prediction)/T.sqrt(prediction*(1-prediction))
-		#second_order = interaction(optimization["rho_ij"], loss)
-		
-		# 3rd order correlation terms
-		#rho_ijk = optimization["rho_ijk"]
-		#diag = T.diag(T.dot(rho_ijk, u.T).dot(u))
-				
-		#correction = T.log(1 + second_order)
-		correction = T.dot(optimization["rho_ij"],loss.T).T
-		loss = T.diag(T.dot(correction,correction.T)) #+ loss.sum(axis=1) 
+			return diag		
+		binary_loss = (target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction)).sum(axis=1)
+		u = (target_var - prediction)/T.sqrt(prediction*(1-prediction))	
+		second_order = interaction(optimization["rho_ij"], u)
+		correction = T.log(1 + T.sqrt(second_order**2))
+		loss = -(binary_loss + correction)/prediction.shape[1] 
 
 	elif optimization["objective"] == 'autoencoder':
 		loss = objectives.squared_error(prediction, target_var)
@@ -441,6 +431,10 @@ def build_loss(network, target_var, prediction, optimization):
 		error = (target_var - prediction)
 		decor_error = T.dot(optimization["Linv"], error.T).T
 		loss = decor_error ** 2
+
+	elif optimization["objective"] == 'hinge':
+		loss = T.nnet.relu(1 - prediction*target_var - (1-prediction)*(1-target_var))
+
 
 	#loss = loss.mean()
 	loss = objectives.aggregate(loss, mode='mean')

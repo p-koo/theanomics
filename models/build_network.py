@@ -198,6 +198,18 @@ def activation_layer(network_last, activation):
 
 
 
+class DecorrLayer():
+    def __init__(self, incoming, L, **kwargs):
+    	self.L = L
+        super(DecorrLayer, self).__init__(incoming, L, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape[0]
+
+    def get_output_for(self, input, **kwargs):
+        
+        return T.dot(self.L, input.T).T
+
 
 
 

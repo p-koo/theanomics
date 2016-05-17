@@ -16,13 +16,13 @@ def conv_autoencoder(shape, num_labels):
 			  'name': 'input'
 			 }
 	layer2 = {'layer': 'convolution', 
-			  'num_filters': 5, 
-			  'filter_size': (16, 1),
+			  'num_filters': 2, 
+			  'filter_size': (12, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'relu',
-			  'pool_size': (4, 1),
+			  'pool_size': (8, 1),
 			  'name': 'conv1'
 			  }
 
