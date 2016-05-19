@@ -9,38 +9,44 @@ from src import train as fit
 from src import make_directory 
 from models import load_model
 from data import load_data
-np.random.seed(727) # for reproducibility
+from six.moves import cPickle
+np.random.seed(247) # for reproducibility
+
 
 #------------------------------------------------------------------------------
 # load data
 
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
-options = {"class_range": range(40)}# 
+options = {"class_range": range(164)}
 train, valid, test = load_data(name, datapath, options)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
-"""
-print "total number of training samples:"
-print train[0].shape
-print train[1].shape
+# calculate correlations
+labels = train[1].astype(float) #np.vstack([train[1], valid[1]]).astype(np.float32)
+N = labels.shape[0]
+rho_ij = np.zeros((num_labels, num_labels))
+for i in range(num_labels):
+    p_i = np.sum(labels[:,i])/N
+    for j in range(i):
+        p_j = np.sum(labels[:,j])/N    
+        p_ij = np.sum(labels[:,i]*labels[:,j])/N
+        norm = np.sqrt(p_i*(1-p_i)) * np.sqrt(p_j*(1-p_j))
+        rho_ij[j,i] = (p_ij - p_i*p_j)/norm
+        
+f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','wb')
+cPickle.dump(rho_ij, f)
+f.close()
 
-print "total number of validation samples:"
-print valid[0].shape
 
-print "number of positive training samples for each class:"
-print np.sum(train[1], axis=0)
-print "number of positive validation samples for each class:"
-print np.sum(valid[1], axis=0)
-"""
 #-------------------------------------------------------------------------------------
 
-# load model parameters
+# build model
 model_name = "binary_genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
-nnmodel.print_layers()
+#nnmodel.print_layers()
 
 # set output file paths
 filename = model_name + "_new"
@@ -48,12 +54,9 @@ datapath = make_directory(datapath, 'Results')
 filepath = os.path.join(datapath, filename)
 
 # train model
-nnmodel = fit.train_learning_decay(nnmodel, train, valid, learning_rate=.01, 
-								batch_size=68, num_epochs=500, patience=10, 
-								learn_patience=1, decay=0.5, verbose=1, filepath=filepath)
-nnmodel = fit.train_learning_decay(nnmodel, train, valid, learning_rate=.001, 
-								batch_size=256, num_epochs=500, patience=5, 
-								learn_patience=1, decay=0.5, verbose=1, filepath=filepath)
+batch_size = 100
+nnmodel = fit.train_minibatch(nnmodel, train, valid, batch_size=batch_size, num_epochs=500, 
+            patience=10, verbose=1, filepath=filepath)
 
 # save best model --> lowest cross-validation error
 min_loss, min_index = nnmodel.get_min_loss()

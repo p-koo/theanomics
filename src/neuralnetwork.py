@@ -167,7 +167,7 @@ class NeuralNet:
 	def train_metric(self, prediction, y):
 		if self.objective == 'categorical':
 			return np.mean(np.argmax(prediction, axis=1) == y)
-		elif self.objective == 'binary':
+		elif (self.objective == 'binary') | (self.objective == 'multi-binary'):
 			return np.mean(np.round(prediction) == y)
 		else:
 			R = []
@@ -289,6 +289,8 @@ class MonitorPerformance():
 	def early_stopping(self, current_loss, current_epoch, patience):
 		min_loss, min_epoch = self.get_min_loss()
 		status = True
+
+
 		if min_loss < current_loss:
 			if patience - (current_epoch - min_epoch) < 0:
 				status = False
@@ -415,6 +417,7 @@ def build_loss(network, target_var, prediction, optimization):
 		def interaction(rho, u):
 			diag = T.diag(T.dot(u,T.dot(rho, u.T)))
 			return diag		
+		prediction = T.clip(prediction, 1e-7, 1-1e-7)
 		binary_loss = (target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction)).sum(axis=1)
 		u = (target_var - prediction)/T.sqrt(prediction*(1-prediction))	
 		second_order = interaction(optimization["rho_ij"], u)
@@ -433,6 +436,7 @@ def build_loss(network, target_var, prediction, optimization):
 		loss = decor_error ** 2
 
 	elif optimization["objective"] == 'hinge':
+		#prediction = T.dot(optimization['rho_ij'],prediction.T).T
 		loss = T.nnet.relu(1 - prediction*target_var - (1-prediction)*(1-target_var))
 
 

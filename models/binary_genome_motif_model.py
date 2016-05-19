@@ -183,7 +183,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'name': 'conv7'
 			  }
 	dense1 = {'layer': 'dense', 
-			  'num_units': 1028, 
+			  'num_units': 1026, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'norm': 'batch',
@@ -200,7 +200,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'dropout': .5,
 			  'name': 'dense2'
 			  }
-  	output = {'layer': 'dense', 
+	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
@@ -216,7 +216,7 @@ def binary_genome_motif_model(shape, num_labels):
 	network = build_network(model_layers)
 
 	# optimization parameters
-	optimization = {"objective": "multi-binary",
+	optimization = {"objective": "binary",
 					"optimizer": "adam",
 					"rho_ij": rho_ij, #np.array(L, dtype=theano.config.floatX),
 #	                "optimizer": "nesterov_momentum",
