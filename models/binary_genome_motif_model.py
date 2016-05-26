@@ -119,7 +119,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'name': 'conv1'
 			  }
@@ -128,7 +128,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (6, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
@@ -138,7 +138,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'name': 'conv3'
 			  }
@@ -147,7 +147,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv4'
@@ -157,7 +157,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'name': 'conv5'
 			  }
@@ -166,7 +166,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv6'
@@ -176,31 +176,29 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  'norm': 'local', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'dropout': .5,
 			  'name': 'conv7'
 			  }
 	dense1 = {'layer': 'dense', 
-			  'num_units': 1026, 
+			  'num_units': 1028, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
-			  'norm': 'batch',
 			  'activation': 'prelu',
 			  'dropout': .5,
 			  'name': 'dense1'
 			  }
 	dense2 = {'layer': 'dense', 
-			  'num_units': 512, 
+			  'num_units': 1028, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
-			  'norm': 'batch',
 			  'activation': 'prelu',
 			  'dropout': .5,
 			  'name': 'dense2'
 			  }
-	output = {'layer': 'dense', 
+  	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),

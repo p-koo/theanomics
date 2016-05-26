@@ -17,7 +17,7 @@ np.random.seed(247) # for reproducibility
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
 filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000_4.hdf5')
-#filepath = os.path.join(datapath, 'synthetic_random_motifs_100000_1.hdf5')
+filepath = os.path.join(datapath, 'synthetic_random_motifs_100000_1.hdf5')
 
 """
 name = 'MotifSimulation_binary'
@@ -40,9 +40,6 @@ for i in range(num_labels):
         p_ij = np.sum(labels[:,i]*labels[:,j])/N
         norm = np.sqrt(p_i*(1-p_i)) * np.sqrt(p_j*(1-p_j))
         rho_ij[j,i] = (p_ij - p_i*p_j)/norm
-#C = np.cov(labels.T)
-#L = np.linalg.cholesky(C)
-#Linv = np.linalg.inv(L)
 
 f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','wb')
 cPickle.dump(rho_ij, f)

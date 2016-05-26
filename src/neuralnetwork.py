@@ -167,7 +167,7 @@ class NeuralNet:
 	def train_metric(self, prediction, y):
 		if self.objective == 'categorical':
 			return np.mean(np.argmax(prediction, axis=1) == y)
-		elif (self.objective == 'binary') | (self.objective == 'multi-binary'):
+		elif (self.objective == 'binary') | (self.objective == 'multi-binary') | (self.objective == 'hinge'):
 			return np.mean(np.round(prediction) == y)
 		else:
 			R = []
@@ -419,10 +419,10 @@ def build_loss(network, target_var, prediction, optimization):
 			return diag		
 		prediction = T.clip(prediction, 1e-7, 1-1e-7)
 		binary_loss = (target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction)).sum(axis=1)
-		u = (target_var - prediction)/T.sqrt(prediction*(1-prediction))	
+		u = T.abs_(target_var - prediction)/T.sqrt(prediction*(1-prediction))	
 		second_order = interaction(optimization["rho_ij"], u)
-		correction = T.log(1 + T.sqrt(second_order**2))
-		loss = -(binary_loss + correction)/prediction.shape[1] 
+		correction = T.log(T.maximum(1 + second_order,1e-7))
+		loss = -(binary_loss - correction)/prediction.shape[1] 
 
 	elif optimization["objective"] == 'autoencoder':
 		loss = objectives.squared_error(prediction, target_var)
@@ -436,8 +436,10 @@ def build_loss(network, target_var, prediction, optimization):
 		loss = decor_error ** 2
 
 	elif optimization["objective"] == 'hinge':
+		error = (target_var - prediction)
+		loss = T.diag(T.dot(error,T.dot(optimization["rho_ij"], error.T)))
 		#prediction = T.dot(optimization['rho_ij'],prediction.T).T
-		loss = T.nnet.relu(1 - prediction*target_var - (1-prediction)*(1-target_var))
+		#loss = T.nnet.relu(1 - prediction*target_var - (1-prediction)*(1-target_var))
 
 
 	#loss = loss.mean()

@@ -4,15 +4,26 @@
 N=100000
 
 random:
+  test loss:    0.13450
+  test accuracy:  0.95191+/-0.00751
+  test auc-roc: 0.94889+/-0.01659
+  test auc-pr:    0.77268+/-0.05524
 
 
 correlated:
+  test loss:    0.15097
+  test accuracy:  0.94652+/-0.01358
+  test auc-roc: 0.92485+/-0.04292
+  test auc-pr:    0.71096+/-0.10940
 
+
+expand:
+  test loss:    0.14564
+  test accuracy:  0.94743+/-0.01374
+  test auc-roc: 0.93058+/-0.04278
+  test auc-pr:    0.72071+/-0.11026
 
 corrected:
-
-
-
 
 
 
@@ -70,17 +81,6 @@ random
   test auc-roc:   0.93734+/-0.02664
   test auc-pr:    0.82591+/-0.06886
 
-  valid loss:   10.19320
-  valid accuracy: 0.89179+/-0.00949
-  valid auc-roc:  0.87734+/-0.01941
-  valid auc-pr:   0.71958+/-0.03673
-saving model parameters to: /home/peter/Data/SequenceMotif/Results/random_2_epoch_0.pickle
-Epoch 2 out of 500 
-[==============================] 100.0% -- time=0s -- loss=10.20822 -- accuracy=82.09%   
-  valid loss:   10.08800
-  valid accuracy: 0.89157+/-0.01154
-  valid auc-roc:  0.88629+/-0.01847
-  valid auc-pr:   0.73411+/-0.04228
 
 decorr (GLS):
   test loss:      0.29031

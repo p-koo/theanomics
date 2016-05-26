@@ -11,76 +11,6 @@ def build_network(model_layers, autoencode=0):
 	return network
 
 
-def build_decode_layers(model_layers, network, last_layer):
-
-	def get_reverse_layers(model_layers):
-		reverse_layers = []
-		num_layers = len(model_layers)
-		for i in range(num_layers-1, -1, -1):
-			reverse_layers.append(model_layers[i])
-		return reverse_layers
-
-	reverse_layers = get_reverse_layers(model_layers)
-
-	# encode layer
-	network['encode'] = layers.NonlinearityLayer(network[last_layer], nonlinearity=None)
-	lastlayer = 'encode'
-
-	for model_layer in reverse_layers:
-		name = model_layer['name']
-
-		if name == "input":
-			break
-		else:
-
-			# add max-pooling layer
-			if 'pool_size' in model_layer:  
-				newlayer = name+'_pool_inv'  # str(counter) + '_' + name+'_pool' 
-				network[newlayer] = layers.InverseLayer(network[lastlayer], network[name+'_pool'])
-				lastlayer = newlayer       
-
-
-				# add core layer
-				newlayer = name+'_inv'
-				network[newlayer] = layers.InverseLayer(network[lastlayer], network[name])
-				lastlayer = newlayer
-
-				newlayer = name+'_bias_inv'
-				network[newlayer] = layers.BiasLayer(network[lastlayer], b=model_layer['b'])
-				lastlayer = newlayer	
-				
-			
-		# add Batch normalization layer
-		if 'norm' in model_layer:
-			if model_layer['norm'] == 'batch':
-				newlayer = name + '_batch_inv' #str(counter) + '_' + name + '_batch'
-				network[newlayer] = layers.BatchNormLayer(network[lastlayer])
-			elif model_layer['norm'] == 'local':
-				newlayer = name + '_local_inv' # str(counter) + '_' + name + '_local'
-				network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
-													alpha=.001/9.0, k=1., beta=0.75, n=5)
-			lastlayer = newlayer
-			
-		# add activation layer
-		if 'activation' in model_layer:
-			if name == 'output':
-				newlayer = name
-			else:
-				newlayer = name+'_active_inv'
-			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
-			lastlayer = newlayer
-		
-		# add dropout layer
-		if 'dropout' in model_layer:
-			newlayer = name+'_dropout_inv' # str(counter) + '_' + name+'_dropout'
-			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
-			lastlayer = newlayer
-	network['output'] = network[lastlayer]
-
-	return network
-
-
-
 def build_forward_layers(model_layers, network={}):
 
 	# loop to build each layer of network
@@ -107,22 +37,27 @@ def build_forward_layers(model_layers, network={}):
 		# add Batch normalization layer
 		if 'norm' in model_layer:
 			if model_layer['norm'] == 'batch':
-				newlayer = name + '_batch' #str(counter) + '_' + name + '_batch'
+				newlayer = name + '_batch_inv' #str(counter) + '_' + name + '_batch'
 				network[newlayer] = layers.BatchNormLayer(network[lastlayer])
-			elif model_layer['norm'] == 'local':
-				newlayer = name + '_local' # str(counter) + '_' + name + '_local'
-				network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
-													alpha=.001/9.0, k=1., beta=0.75, n=5)
-			lastlayer = newlayer
+				lastlayer = newlayer
 			
 		# add activation layer
 		if 'activation' in model_layer:
 			if name == 'output':
 				newlayer = name
 			else:
-				newlayer = name+'_active'
+				newlayer = name+'_active_inv'
 			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
 			lastlayer = newlayer
+		
+		# add Batch normalization layer
+		if 'norm' in model_layer:
+			if model_layer['norm'] == 'local':
+				newlayer = name + '_local_inv' # str(counter) + '_' + name + '_local'
+				network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
+													alpha=.001/9.0, k=1., beta=0.75, n=5)
+				lastlayer = newlayer
+				
 		
 		# add dropout layer
 		if 'dropout' in model_layer:
@@ -196,6 +131,78 @@ def activation_layer(network_last, activation):
 	
 	return network
 
+
+def build_decode_layers(model_layers, network, last_layer):
+
+	def get_reverse_layers(model_layers):
+		reverse_layers = []
+		num_layers = len(model_layers)
+		for i in range(num_layers-1, -1, -1):
+			reverse_layers.append(model_layers[i])
+		return reverse_layers
+
+	reverse_layers = get_reverse_layers(model_layers)
+
+	# encode layer
+	network['encode'] = layers.NonlinearityLayer(network[last_layer], nonlinearity=None)
+	lastlayer = 'encode'
+
+	for model_layer in reverse_layers:
+		name = model_layer['name']
+
+		if name == "input":
+			break
+		else:
+
+			# add max-pooling layer
+			if 'pool_size' in model_layer:  
+				newlayer = name+'_pool_inv'  # str(counter) + '_' + name+'_pool' 
+				network[newlayer] = layers.InverseLayer(network[lastlayer], network[name+'_pool'])
+				lastlayer = newlayer       
+
+
+				# add core layer
+				newlayer = name+'_inv'
+				network[newlayer] = layers.InverseLayer(network[lastlayer], network[name])
+				lastlayer = newlayer
+
+				newlayer = name+'_bias_inv'
+				network[newlayer] = layers.BiasLayer(network[lastlayer], b=model_layer['b'])
+				lastlayer = newlayer	
+				
+			
+		# add Batch normalization layer
+		if 'norm' in model_layer:
+			if model_layer['norm'] == 'batch':
+				newlayer = name + '_batch_inv' #str(counter) + '_' + name + '_batch'
+				network[newlayer] = layers.BatchNormLayer(network[lastlayer])
+				lastlayer = newlayer
+			
+		# add activation layer
+		if 'activation' in model_layer:
+			if name == 'output':
+				newlayer = name
+			else:
+				newlayer = name+'_active_inv'
+			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
+			lastlayer = newlayer
+		
+		# add Batch normalization layer
+		if 'norm' in model_layer:
+			if model_layer['norm'] == 'local':
+				newlayer = name + '_local_inv' # str(counter) + '_' + name + '_local'
+				network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
+													alpha=.001/9.0, k=1., beta=0.75, n=5)
+				lastlayer = newlayer
+				
+		# add dropout layer
+		if 'dropout' in model_layer:
+			newlayer = name+'_dropout_inv' # str(counter) + '_' + name+'_dropout'
+			network[newlayer] = layers.DropoutLayer(network[lastlayer], p=model_layer['dropout'])
+			lastlayer = newlayer
+	network['output'] = network[lastlayer]
+
+	return network
 
 
 class DecorrLayer():
