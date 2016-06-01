@@ -9,7 +9,7 @@ import theano
 
 def binary_genome_motif_model(shape, num_labels):
 
-	"""
+	#"""
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
 
@@ -26,7 +26,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
+			  'pool_size': (2, 1),
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
@@ -36,7 +36,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
+			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
 	conv3= {'layer': 'convolution', 
@@ -46,12 +46,24 @@ def binary_genome_motif_model(shape, num_labels):
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
-			  'dropout': .2,
+			  'pool_size': (2, 1),
 			  'name': 'conv3'
 			  }
-	dense1 = {'layer': 'dense', 
-			  'num_units': 1028, 
+
+	recurr1 = {'layer': 'lstm',
+			   'num_units': 150,
+			   'grad_clipping': 100,
+			   'dropout': .2,
+			   'name': 'lstm1'
+			   }
+	recurr2 = {'layer': 'lstm',
+			   'num_units': 150,
+			   'grad_clipping': 100,
+			   'dropout': .2,
+			   'name': 'lstm2'
+			   }
+   	dense1 = {'layer': 'dense', 
+			  'num_units': 512, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'norm': 'batch',
@@ -76,7 +88,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'name': 'output'
 			  }
 
-	model_layers = [input_layer, conv1, conv2, conv3, dense1, dense2, output]
+	model_layers = [input_layer, conv1, conv2, recurr1, recurr2, dense1, output]
 	network = build_network(model_layers)
 
 
@@ -84,11 +96,9 @@ def binary_genome_motif_model(shape, num_labels):
 	rho_ij = cPickle.load(f)
 	f.close()
 
-	model_layers = [input_layer, conv1, conv2, conv3, dense1, dense2, output]
-	network = build_network(model_layers)
 
 	# optimization parameters
-	optimization = {"objective": "hinge",
+	optimization = {"objective": "binary",
 					"optimizer": "adam",
 					"rho_ij": rho_ij, #
 					"learning_rate": 0.001,	                
@@ -119,7 +129,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'name': 'conv1'
 			  }
@@ -128,7 +138,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (6, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
@@ -138,7 +148,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'name': 'conv3'
 			  }
@@ -147,7 +157,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv4'
@@ -157,7 +167,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'name': 'conv5'
 			  }
@@ -166,7 +176,7 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
 			  'name': 'conv6'
@@ -176,18 +186,25 @@ def binary_genome_motif_model(shape, num_labels):
 			  'filter_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'local', 
+			  'norm': 'batch', 
 			  'activation': 'prelu',
 			  'pool_size': (2, 1),
-			  'dropout': .5,
+			  'dropout': .2,
 			  'name': 'conv7'
 			  }
+	recurr1 = {'layer': 'lstm',
+			   'num_units': 250,
+			   'grad_clipping': 0,
+			   'name': 'lstm'
+
+		      }
 	dense1 = {'layer': 'dense', 
 			  'num_units': 1028, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'activation': 'prelu',
-			  'dropout': .5,
+			  'norm': 'batch', 
+			  'dropout': .2,
 			  'name': 'dense1'
 			  }
 	dense2 = {'layer': 'dense', 
@@ -195,7 +212,8 @@ def binary_genome_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'activation': 'prelu',
-			  'dropout': .5,
+			  'norm': 'batch', 
+			  'dropout': .2,
 			  'name': 'dense2'
 			  }
   	output = {'layer': 'dense', 
@@ -210,7 +228,7 @@ def binary_genome_motif_model(shape, num_labels):
 	rho_ij = cPickle.load(f)
 	f.close()
 
-	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, dense1, dense2, output]
+	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, recurr1, dense1, dense2, output]
 	network = build_network(model_layers)
 
 	# optimization parameters
@@ -223,16 +241,15 @@ def binary_genome_motif_model(shape, num_labels):
 					"beta2": .999,
 					"epsilon": 1e-6
 #	                "weight_norm": 7, 
-#	                "momentum": 0.975,
+#	                "momentum": 0.9,
 #	                "l1": 1e-7,
 #	                "l2": 1e-8
 					}
 
-					
+				#	
 	return network, input_var, target_var, optimization
 	
-	"""
-
+	
 
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')

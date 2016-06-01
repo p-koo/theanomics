@@ -16,72 +16,32 @@ def test_motif_model(shape, num_labels):
 				   'name': 'input'
 				   }
   	conv1 = {'layer': 'convolution', 
-			  'num_filters': 64, 
-			  'filter_size': (4, 1),
+			  'num_filters': 20, 
+			  'filter_size': (15, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'activation': 'prelu',
+			  'activation': 'softplus',
 			  'pool_size': (2, 1),
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
-			  'num_filters': 256, 
-			  'filter_size': (4, 1),
+			  'num_filters': 40, 
+			  'filter_size': (9, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'activation': 'prelu',
+			  'activation': 'softplus',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
-	conv3 = {'layer': 'convolution', 
-			  'num_filters': 256, 
-			  'filter_size': (4, 1),
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
-			  'norm': 'batch', 
-			  'activation': 'prelu',
-			  'pool_size': (2, 1),
-			  'name': 'conv3'
-			  }
-  	conv4 = {'layer': 'convolution', 
-			  'num_filters': 256, 
-			  'filter_size': (4, 1),
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
-			  'norm': 'batch', 
-			  'activation': 'prelu',
-			  'pool_size': (2, 1),
-			  'name': 'conv4'
-			  }
-  	conv5 = {'layer': 'convolution', 
-			  'num_filters': 256, 
-			  'filter_size': (4, 1),
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
-			  'norm': 'batch', 
-			  'activation': 'prelu',
-			  'pool_size': (2, 1),
-			  'name': 'conv5'
-			  }
-  	conv6 = {'layer': 'convolution', 
-			  'num_filters': 512, 
-			  'filter_size': (6, 1),
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
-			  'norm': 'batch', 
-			  'activation': 'prelu',
-			  'pool_size': (2, 1),
-			  'name': 'conv6'
-			  }
    	dense1 = {'layer': 'dense', 
-			  'num_units': 512, 
+			  'num_units': 256, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'norm': 'batch', 
-			  'activation': 'prelu', 
-			  'dropout': .5,
+			  'activation': 'softplus', 
+			  'dropout': .2,
 			  'name': 'dense1'
 			  }
 	dense2 = {'layer': 'dense', 
@@ -89,7 +49,7 @@ def test_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'norm': 'batch', 
-			  'activation': 'prelu', 
+			  'activation': 'softplus', 
 			  'dropout': .5,
 			  'name': 'dense2'
 			  }
@@ -101,7 +61,7 @@ def test_motif_model(shape, num_labels):
 			  'name': 'output'
 			  }
 			  
-	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, dense1, dense2, output] 
+	model_layers = [input_layer, conv1, conv2, dense2, output] 
 	network = build_network(model_layers)
 
 

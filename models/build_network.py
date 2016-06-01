@@ -29,15 +29,16 @@ def build_forward_layers(model_layers, network={}):
 			lastlayer = newlayer
 
 			# add bias layer
-			newlayer = name+'_bias'
-			network[newlayer] = layers.BiasLayer(network[lastlayer], b=model_layer['b'])
-			lastlayer = newlayer	
+			if 'b' in model_layer:
+				newlayer = name+'_bias'
+				network[newlayer] = layers.BiasLayer(network[lastlayer], b=model_layer['b'])
+				lastlayer = newlayer	
 				
 			
 		# add Batch normalization layer
 		if 'norm' in model_layer:
-			if model_layer['norm'] == 'batch':
-				newlayer = name + '_batch_inv' #str(counter) + '_' + name + '_batch'
+			if 'batch' in model_layer['norm']:
+				newlayer = name + '_batch' #str(counter) + '_' + name + '_batch'
 				network[newlayer] = layers.BatchNormLayer(network[lastlayer])
 				lastlayer = newlayer
 			
@@ -46,14 +47,14 @@ def build_forward_layers(model_layers, network={}):
 			if name == 'output':
 				newlayer = name
 			else:
-				newlayer = name+'_active_inv'
+				newlayer = name+'_active'
 			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
 			lastlayer = newlayer
 		
 		# add Batch normalization layer
 		if 'norm' in model_layer:
-			if model_layer['norm'] == 'local':
-				newlayer = name + '_local_inv' # str(counter) + '_' + name + '_local'
+			if 'local' in model_layer['norm']:
+				newlayer = name + '_local' # str(counter) + '_' + name + '_local'
 				network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
 													alpha=.001/9.0, k=1., beta=0.75, n=5)
 				lastlayer = newlayer
@@ -95,7 +96,17 @@ def single_layer(model_layer, network_last):
 											  filter_size=model_layer['filter_size'],
 											  W=model_layer['W'],
 											  b=None, 
+											  pad='same',
 											  nonlinearity=None)
+
+	elif model_layer['layer'] == 'lstm':
+	    l_forward = layers.LSTMLayer(network_last, num_units=model_layer['num_units'], 
+	                          				grad_clipping=model_layer['grad_clipping'])
+	    l_backward = layers.LSTMLayer(network_last, num_units=model_layer['num_units'], 
+	                          				grad_clipping=model_layer['grad_clipping'], 
+	    									backwards=True)
+	    network = layers.ConcatLayer([l_forward, l_backward])
+
 	return network
 
 
@@ -166,6 +177,8 @@ def build_decode_layers(model_layers, network, last_layer):
 				network[newlayer] = layers.InverseLayer(network[lastlayer], network[name])
 				lastlayer = newlayer
 
+				# add bias layer
+			if 'b' in model_layer:
 				newlayer = name+'_bias_inv'
 				network[newlayer] = layers.BiasLayer(network[lastlayer], b=model_layer['b'])
 				lastlayer = newlayer	

@@ -16,8 +16,8 @@ np.random.seed(247) # for reproducibility
 
 name = 'MotifSimulation_correlated'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000_4.hdf5')
-filepath = os.path.join(datapath, 'synthetic_random_motifs_100000_1.hdf5')
+filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000_1.hdf5')
+#filepath = os.path.join(datapath, 'synthetic_random_motifs_100000_1.hdf5')
 
 """
 name = 'MotifSimulation_binary'

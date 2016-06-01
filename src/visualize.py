@@ -1,9 +1,349 @@
 #!/bin/python
 import matplotlib.image as img
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+from matplotlib import cm
+import matplotlib as mpl
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+from scipy.misc import imresize
+
+from lasagne.layers import get_output, get_output_shape, get_all_params
 import theano.tensor as T
 import theano
-from lasagne.layers import get_output
+
+class Visualize():
+    def __init__(nnmodel, options=[]):
+        self.network = nnmodel.network
+        self.num_labels = nnmodel.num_labels
+        self.input_var = nnmodel.input_var
+        self.options = options
+
+    def get_feature_maps(layer, X, batch_size=500):
+        """get the feature maps of a given convolutional layer"""
+        
+        num_data = len(X)
+        feature_maps = theano.function([self.input_var], get_output(layer), allow_input_downcast=True)
+        map_shape = get_output_shape(layer)
+
+        # get feature maps in batches for speed (large batches may be too much memory for GPU)
+        num_batches = num_data // batch_size
+        shape = list(map_shape)
+        shape[0] = num_data
+        fmaps = np.empty(tuple(shape))
+        for i in range(num_batches):
+            index = range(i*batch_size, (i+1)*batch_size)    
+            fmaps[index] = feature_maps(X[index])
+
+        # get the rest of the feature maps
+        excess = num_data-num_batches*batch_size
+        if excess:
+            index = range(num_data-excess, num_data)  
+            fmaps[index] = feature_maps(X[index])
+
+        return fmaps
+
+    def get_weights(layer, convert_pwm=0):
+        W =  np.squeeze(layer.W.get_value())
+        if convert_pwm == 1:
+            for i in range(len(W)):
+                #weights = np.exp(W[i])
+                MIN = np.min(W[i])
+                weights = W[i] - MIN
+                Z = np.sum(weights, axis=0)
+                weights /= np.tile(Z, (W[i].shape[0],1))
+                W_norm[i] = weights
+        else:
+            W_norm = W
+        return W_norm
+
+
+
+
+def plot_conv_filter(plt, pwm, height=200, bp_width=100, norm=0, rna=1, adjust=-1, filepath='.', showbar=0):
+    num_seq = pwm.shape[1]
+    width = bp_width*num_seq
+
+    logo = seq_logo(pwm, height, width, norm, rna, filepath)
+    
+    fig, axes = plt.subplots(nrows=2, ncols=1)
+    axes[0].imshow(logo, extent=[bp_width*2, width+bp_width, 0, height])
+    axes[0].set_axis_off()
+    im = axes[1].imshow(pwm, cmap='jet', vmin=0, vmax=1, interpolation='none') 
+    axes[1].set_axis_off()
+    fig.subplots_adjust(bottom=adjust)
+    if showbar == 1:
+        cbar_ax = fig.add_axes([.85, 0.05, 0.05, 0.45])
+        cb = fig.colorbar(im, cax=cbar_ax, ticks=[0, 0.5, 1])
+        cb.ax.tick_params(labelsize=16)
+    return fig
+
+
+def plot_conv_weights(W, options):
+    num_filters = W.shape[0]
+    nrows = np.ceil(np.sqrt(num_filters)).astype(int)
+    ncols = nrows
+    plt.figure()
+    grid = subplot_grid(nrows, ncols)
+    for i in range(num_filters):
+        plt.subplot(grid[i])
+        plt.imshow(W[i], cmap='hot_r', interpolation='nearest')
+        fig_options(plt, options)
+    return plt
+
+
+def seq_logo(pwm, height=100, width=200, norm=0, rna=1, filepath='.'):
+    """generate a sequence logo from a pwm"""
+    
+    def load_alphabet(filepath, rna):
+        """load images of nucleotide alphabet """
+        df = pd.read_table(os.path.join(filepath, 'A.txt'), header=None);
+        A_img = df.as_matrix()
+        A_img = np.reshape(A_img, [72, 65, 3], order="F").astype(np.uint8)
+
+        df = pd.read_table(os.path.join(filepath, 'C.txt'), header=None);
+        C_img = df.as_matrix()
+        C_img = np.reshape(C_img, [76, 64, 3], order="F").astype(np.uint8)
+
+        df = pd.read_table(os.path.join(filepath, 'G.txt'), header=None);
+        G_img = df.as_matrix()
+        G_img = np.reshape(G_img, [76, 67, 3], order="F").astype(np.uint8)
+
+        if rna == 1:
+            df = pd.read_table(os.path.join(filepath, 'U.txt'), header=None);
+            T_img = df.as_matrix()
+            T_img = np.reshape(T_img, [74, 57, 3], order="F").astype(np.uint8)
+        else:
+            df = pd.read_table(os.path.join(filepath, 'T.txt'), header=None);
+            T_img = df.as_matrix()
+            T_img = np.reshape(T_img, [72, 59, 3], order="F").astype(np.uint8)
+
+        return A_img, C_img, G_img, T_img
+
+
+    def get_nt_height(pwm, height, norm):
+        """get the heights of each nucleotide"""
+
+        def entropy(p):
+            """calculate entropy of each nucleotide"""
+            s = 0
+            for i in range(4):
+                if p[i] > 0:
+                    s -= p[i]*np.log(p[i])
+            return s
+
+        num_nt, num_seq = pwm.shape
+        heights = np.zeros((num_nt,num_seq));
+        for i in range(num_seq):
+            if norm == 1:
+                total_height = height
+            else:
+                total_height = (2 - entropy(pwm[:, i]))*height/2;
+            heights[:,i] = np.floor(pwm[:,i]*total_height);
+
+        return heights.astype(int)
+
+    
+    # get the alphabet images of each nucleotide
+    A_img, C_img, G_img, T_img = load_alphabet(filepath='.', rna=1)
+    
+    
+    # get the heights of each nucleotide
+    heights = get_nt_height(pwm, height, norm)
+
+    # resize nucleotide images for each base of sequence and stack
+    num_nt, num_seq = pwm.shape
+    nt_width = np.floor(width/num_seq).astype(int)
+    logo = np.ones((height, width, 3)).astype(int)*255;
+    for i in range(num_seq):
+        remaining_height = height;
+        nt_height = np.sort(heights[:,i]);
+        index = np.argsort(heights[:,i])
+
+        
+        for j in range(num_nt):
+            # resized dimensions of image
+            if nt_height[j] > 0:
+                resize = (nt_height[j],nt_width)
+                if index[j] == 0:
+                    nt_img = imresize(A_img, resize)
+                elif index[j] == 1:
+                    nt_img = imresize(C_img, resize)
+                elif index[j] == 2:
+                    nt_img = imresize(G_img, resize)
+                elif index[j] == 3:
+                    nt_img = imresize(T_img, resize)
+
+                # determine location of image
+                height_range = range(remaining_height-nt_height[j], remaining_height)
+                width_range = range(i*nt_width, i*nt_width+nt_width)
+
+                # 'annoying' way to broadcast resized nucleotide image
+                for k in range(3):
+                    for m in range(len(width_range)):
+                        logo[height_range, width_range[m],k] = nt_img[:,m,k];
+
+                remaining_height -= nt_height[j]
+
+    return logo.astype(np.uint8)
+
+
+def seq_logo2(pwm, height=100, width=200, norm=0, rna=1, filepath='.'):
+    """generate a sequence logo from a pwm"""
+    
+    def load_alphabet(filepath, rna):
+        """load images of nucleotide alphabet """
+        df = pd.read_table(os.path.join(filepath, 'A.txt'), header=None);
+        A_img = df.as_matrix()
+        A_img = np.reshape(A_img, [72, 65, 3], order="F").astype(np.uint8)
+
+        df = pd.read_table(os.path.join(filepath, 'C.txt'), header=None);
+        C_img = df.as_matrix()
+        C_img = np.reshape(C_img, [76, 64, 3], order="F").astype(np.uint8)
+
+        df = pd.read_table(os.path.join(filepath, 'G.txt'), header=None);
+        G_img = df.as_matrix()
+        G_img = np.reshape(G_img, [76, 67, 3], order="F").astype(np.uint8)
+
+        if rna == 1:
+            df = pd.read_table(os.path.join(filepath, 'U.txt'), header=None);
+            T_img = df.as_matrix()
+            T_img = np.reshape(T_img, [74, 57, 3], order="F").astype(np.uint8)
+        else:
+            df = pd.read_table(os.path.join(filepath, 'T.txt'), header=None);
+            T_img = df.as_matrix()
+            T_img = np.reshape(T_img, [72, 59, 3], order="F").astype(np.uint8)
+
+        return A_img, C_img, G_img, T_img
+
+
+    def get_nt_height(pwm, height, norm):
+        """get the heights of each nucleotide"""
+
+        def entropy(p):
+            """calculate entropy of each nucleotide"""
+            s = 0
+            for i in range(4):
+                if p[i] > 0:
+                    s -= p[i]*np.log(p[i])
+            return s
+
+        num_nt, num_seq = pwm.shape
+        heights = np.zeros((num_nt,num_seq))
+        for i in range(num_seq):
+            if norm == 1:
+                total_height = height
+            else:
+                total_height = (2 - entropy(np.abs(pwm[:, i])))*height
+            heights[:,i] = np.floor(np.abs(pwm[:,i])*total_height);
+            
+
+        return heights.astype(int)
+
+    
+    # get the alphabet images of each nucleotide
+    A_img, C_img, G_img, T_img = load_alphabet(filepath='.', rna=1)
+    
+    
+    # get the heights of each nucleotide
+    heights = get_nt_height(pwm, height, norm)
+
+    # resize nucleotide images for each base of sequence and stack
+    num_nt, num_seq = pwm.shape
+    nt_width = np.floor(width/num_seq).astype(int)
+    logo = np.ones((2*height, width, 3)).astype(int)*255;
+    sign = np.sign(pwm)
+    for i in range(num_seq):
+        pos_index = np.where(sign[:,i]> 0)[0]
+        nt_height = np.sort(heights[pos_index,i]);
+        index = pos_index[np.argsort(heights[pos_index,i])]
+        remaining_height = height;
+        
+        for j in range(len(pos_index)):
+            # resized dimensions of image
+        
+            if nt_height[j] > 0:
+                resize = (nt_height[j],nt_width)
+                if index[j] == 0:
+                    nt_img = imresize(A_img, resize)
+                elif index[j] == 1:
+                    nt_img = imresize(C_img, resize)
+                elif index[j] == 2:
+                    nt_img = imresize(G_img, resize)
+                elif index[j] == 3:
+                    nt_img = imresize(T_img, resize)
+
+                # determine location of image
+                height_range = range(remaining_height-nt_height[j], remaining_height)
+                width_range = range(i*nt_width, i*nt_width+nt_width)
+
+                # 'annoying' way to broadcast resized nucleotide image
+                for k in range(3):
+                    for m in range(len(width_range)):
+                        logo[height_range, width_range[m],k] = nt_img[:,m,k];
+                remaining_height -= nt_height[j]
+        
+        pos_index = np.where(sign[:,i]< 0)[0]
+        nt_height = np.sort(heights[pos_index,i]);
+        nt_height = nt_height[::-1]
+        index = pos_index[np.argsort(heights[pos_index,i])]
+        index = index[::-1]
+        remaining_height = np.sum(nt_height)-height;
+        
+        for j in range(len(pos_index)):
+            # resized dimensions of image
+            if nt_height[j] > 0:
+                resize = (nt_height[j],nt_width)
+                if index[j] == 0:
+                    nt_img = imresize(A_img[::-1,:,:], resize)
+                elif index[j] == 1:
+                    nt_img = imresize(C_img[::-1,:,:], resize)
+                elif index[j] == 2:
+                    nt_img = imresize(G_img[::-1,:,:], resize)
+                elif index[j] == 3:
+                    nt_img = imresize(T_img[::-1,:,:], resize)
+
+                # determine location of image
+                height_range = range(remaining_height-nt_height[j],remaining_height)
+                width_range = range(i*nt_width, i*nt_width+nt_width)
+
+                # 'annoying' way to broadcast resized nucleotide image
+                for k in range(3):
+                    for m in range(len(width_range)):
+                        logo[height_range, width_range[m],k] = nt_img[:,m,k];
+                remaining_height -= nt_height[j]
+        
+    return logo.astype(np.uint8)
+
+
+
+
+def fig_options(plt, options):
+    if 'figsize' in options:
+        fig = plt.gcf()
+        fig.set_size_inches(options['figsize'][0], options['figsize'][1], forward=True)
+    if 'ylim' in options:
+        plt.ylim(options['ylim'][0],options['ylim'][1])
+    if 'yticks' in options:
+        plt.yticks(options['yticks'])
+    if 'xticks' in options:
+        plt.xticks(options['xticks'])
+    if 'labelsize' in options:        
+        ax = plt.gca()
+        ax.tick_params(axis='x', labelsize=options['labelsize'])
+        ax.tick_params(axis='y', labelsize=options['labelsize'])
+    if 'axis' in options:
+        plt.axis(options['axis'])
+    if 'xlabel' in options:
+        plt.xlabel(options['xlabel'], fontsize=options['fontsize'])
+    if 'ylabel' in options:
+        plt.ylabel(options['ylabel'], fontsize=options['fontsize'])
+    if 'linewidth' in options:
+        plt.rc('axes', linewidth=options['linewidth'])
+        
+def subplot_grid(nrows, ncols):
+    grid= mpl.gridspec.GridSpec(nrows, ncols)
+    grid.update(wspace=0.2, hspace=0.2, left=0.1, right=0.2, bottom=0.1, top=0.2) 
+    return grid
 
 
 def plot_loss(loss):
@@ -22,9 +362,9 @@ def plot_loss(loss):
     plt.xlabel('epoch', fontsize=22)
     plt.ylabel('loss', fontsize=22)
     plt.legend(loc='best', frameon=False, fontsize=18)
-	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
-	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
-	plt.tight_layout()
+    map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+    map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+    plt.tight_layout()
     return fig, plt
 
 
@@ -38,11 +378,11 @@ def plot_roc_all(final_roc):
     plt.ylabel('True positive rate', fontsize=22)
     plt.plot([0, 1],[0, 1],'k--')
     ax = plt.gca()
-	ax.xaxis.label.set_fontsize(17)
-	ax.yaxis.label.set_fontsize(17)
-	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
-	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
-	plt.tight_layout()
+    ax.xaxis.label.set_fontsize(17)
+    ax.yaxis.label.set_fontsize(17)
+    map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+    map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+    plt.tight_layout()
     #plt.legend(loc='best', frameon=False, fontsize=14)
     return fig, plt
 
@@ -57,224 +397,10 @@ def plot_pr_all(final_pr):
     plt.ylabel('Product', fontsize=22)
     plt.plot([0, 1],[0, 1],'k--')
     ax = plt.gca()
-	ax.xaxis.label.set_fontsize(17)
-	ax.yaxis.label.set_fontsize(17)
-	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
-	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
-	plt.tight_layout()
+    ax.xaxis.label.set_fontsize(17)
+    ax.yaxis.label.set_fontsize(17)
+    map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
+    map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
+    plt.tight_layout()
     #plt.legend(loc='best', frameon=False, fontsize=14)
     return fig, plt
-
-
-def plot_conv_weights(layer, figsize=(6, 6)):
-    """nolearn's plot the weights of a specific layer"""
-
-    W =  np.squeeze(layer.W.get_value())
-    shape = W.shape
-    nrows = np.ceil(np.sqrt(shape[0])).astype(int)
-    ncols = nrows
-
-    figs, axes = plt.subplots(nrows, ncols, figsize=figsize,frameon=False)
-
-    for ax in axes.flatten():
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.axis('off')
-
-    for i, ax in enumerate(axes.ravel()):
-        if i >= shape[0]:
-            break
-        im = ax.imshow(W[i], cmap='gray', interpolation='nearest')
-
-    return figs, axes
-
-
-def plot_weights(weights):
-    fig = plt.figure(figsize=(6, 6))
-    plt.imshow(weights.T, cmap='gray')
-    plt.xticks([])
-    plt.yticks([])
-    plt.show()
-    return plt
-
-
-def plot_conv_activity(activity, figsize=(6, 8)):
-    """nolearn's plot the acitivities of a specific layer.
-        x : numpy.ndarray (1 data point) """
-
-    fig = plt.figure()
-    shape = activity.shape
-    nrows = np.ceil(np.sqrt(shape[1])).astype(int)
-    ncols = nrows
-
-    figs, axes = plt.subplots(nrows + 1, ncols, figsize=figsize)
-    axes[0, ncols // 2].imshow(1 - x[0][0], cmap='gray', interpolation='nearest')
-    axes[0, ncols // 2].set_title('original')
-
-    for ax in axes.flatten():
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.axis('off')
-
-    for i, ax in enumerate(axes.ravel()):    
-        if i >= shape[1]:
-            break
-        ndim = activity[0][i].ndim
-        if ndim != 2:
-            raise ValueError("Wrong number of dimensions, image data should "
-                             "have 2, instead got {}".format(ndim))
-        ax.imshow(-activity[0][i], cmap='gray', interpolation='nearest')
-
-    plt.show()
-    return plt
-
-
-
-
-
-
-
-
-
-"""
-
-def occlusion_heatmap(net, x, target, square_length=7):
-    """An occlusion test that checks an image for its critical parts.
-    In this function, a square part of the image is occluded (i.e. set
-    to 0) and then the net is tested for its propensity to predict the
-    correct label. One should expect that this propensity shrinks of
-    critical parts of the image are occluded. If not, this indicates
-    overfitting.
-    Depending on the depth of the net and the size of the image, this
-    function may take awhile to finish, since one prediction for each
-    pixel of the image is made.
-    Currently, all color channels are occluded at the same time. Also,
-    this does not really work if images are randomly distorted by the
-    batch iterator.
-    See paper: Zeiler, Fergus 2013
-    Parameters
-    ----------
-    net : NeuralNet instance
-      The neural net to test.
-    x : np.array
-      The input data, should be of shape (1, c, x, y). Only makes
-      sense with image data.
-    target : int
-      The true value of the image. If the net makes several
-      predictions, say 10 classes, this indicates which one to look
-      at.
-    square_length : int (default=7)
-      The length of the side of the square that occludes the image.
-      Must be an odd number.
-    Results
-    -------
-    heat_array : np.array (with same size as image)
-      An 2D np.array that at each point (i, j) contains the predicted
-      probability of the correct class if the image is occluded by a
-      square with center (i, j).
-    """
-    if (x.ndim != 4) or x.shape[0] != 1:
-        raise ValueError("This function requires the input data to be of "
-                         "shape (1, c, x, y), instead got {}".format(x.shape))
-    if square_length % 2 == 0:
-        raise ValueError("Square length has to be an odd number, instead "
-                         "got {}.".format(square_length))
-
-    num_classes = get_output_shape(net.layers_[-1])[1]
-    img = x[0].copy()
-    bs, col, s0, s1 = x.shape
-
-    heat_array = np.zeros((s0, s1))
-    pad = square_length // 2 + 1
-    x_occluded = np.zeros((s1, col, s0, s1), dtype=img.dtype)
-    probs = np.zeros((s0, s1, num_classes))
-
-    # generate occluded images
-    for i in range(s0):
-        # batch s1 occluded images for faster prediction
-        for j in range(s1):
-            x_pad = np.pad(img, ((0, 0), (pad, pad), (pad, pad)), 'constant')
-            x_pad[:, i:i + square_length, j:j + square_length] = 0.
-            x_occluded[j] = x_pad[:, pad:-pad, pad:-pad]
-        y_proba = net.predict_proba(x_occluded)
-        probs[i] = y_proba.reshape(s1, num_classes)
-
-    # from predicted probabilities, pick only those of target class
-    for i in range(s0):
-        for j in range(s1):
-            heat_array[i, j] = probs[i, j, target]
-    return heat_array
-
-
-def _plot_heat_map(net, X, figsize, get_heat_image):
-    if (X.ndim != 4):
-        raise ValueError("This function requires the input data to be of "
-                         "shape (b, c, x, y), instead got {}".format(X.shape))
-
-    num_images = X.shape[0]
-    if figsize[1] is None:
-        figsize = (figsize[0], num_images * figsize[0] / 3)
-    figs, axes = plt.subplots(num_images, 3, figsize=figsize)
-
-    for ax in axes.flatten():
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.axis('off')
-
-    for n in range(num_images):
-        heat_img = get_heat_image(net, X[n:n + 1, :, :, :], n)
-
-        ax = axes if num_images == 1 else axes[n]
-        img = X[n, :, :, :].mean(0)
-        ax[0].imshow(-img, interpolation='nearest', cmap='gray')
-        ax[0].set_title('image')
-        ax[1].imshow(-heat_img, interpolation='nearest', cmap='Reds')
-        ax[1].set_title('critical parts')
-        ax[2].imshow(-img, interpolation='nearest', cmap='gray')
-        ax[2].imshow(-heat_img, interpolation='nearest', cmap='Reds',
-                     alpha=0.6)
-        ax[2].set_title('super-imposed')
-    return plt
-
-
-def plot_occlusion(net, X, target, square_length=7, figsize=(9, None)):
-    """Plot which parts of an image are particularly import for the
-    net to classify the image correctly.
-    See paper: Zeiler, Fergus 2013
-    Parameters
-    ----------
-    net : NeuralNet instance
-      The neural net to test.
-    X : numpy.array
-      The input data, should be of shape (b, c, 0, 1). Only makes
-      sense with image data.
-    target : list or numpy.array of ints
-      The true values of the image. If the net makes several
-      predictions, say 10 classes, this indicates which one to look
-      at. If more than one sample is passed to X, each of them needs
-      its own target.
-    square_length : int (default=7)
-      The length of the side of the square that occludes the image.
-      Must be an odd number.
-    figsize : tuple (int, int)
-      Size of the figure.
-    Plots
-    -----
-    Figure with 3 subplots: the original image, the occlusion heatmap,
-    and both images super-imposed.
-    """
-    return _plot_heat_map(net, X, figsize, lambda net, X, n: occlusion_heatmap(net, X, target[n], square_length))
-
-
-"""
-
-
-
-
-
-
-
-
-
-
-
