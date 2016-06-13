@@ -20,9 +20,9 @@ def test_motif_model(shape, num_labels):
 			  'filter_size': (15, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  #'norm': 'batch', 
 			  'activation': 'softplus',
-			  'pool_size': (2, 1),
+			  'pool_size': (4, 1),
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
@@ -30,28 +30,19 @@ def test_motif_model(shape, num_labels):
 			  'filter_size': (9, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'norm': 'batch', 
+			  #'norm': 'batch', 
 			  'activation': 'softplus',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
    	dense1 = {'layer': 'dense', 
-			  'num_units': 256, 
+			  'num_units': 200, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
-			  'norm': 'batch', 
+			  #'norm': 'batch', 
 			  'activation': 'softplus', 
-			  'dropout': .2,
+			  #'dropout': .5,
 			  'name': 'dense1'
-			  }
-	dense2 = {'layer': 'dense', 
-			  'num_units': 256, 
-			  'W': GlorotUniform(),
-			  'b': Constant(0.05), 
-			  'norm': 'batch', 
-			  'activation': 'softplus', 
-			  'dropout': .5,
-			  'name': 'dense2'
 			  }
 	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
@@ -61,7 +52,7 @@ def test_motif_model(shape, num_labels):
 			  'name': 'output'
 			  }
 			  
-	model_layers = [input_layer, conv1, conv2, dense2, output] 
+	model_layers = [input_layer, conv1, conv2, dense1, output] 
 	network = build_network(model_layers)
 
 
