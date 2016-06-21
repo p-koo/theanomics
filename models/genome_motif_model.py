@@ -10,84 +10,116 @@ def genome_motif_model(shape, num_labels):
 	target_var = T.dmatrix('targets')
 
 	# create model
-	layer1 = {'layer': 'input',
+	input_layer = {'layer': 'input',
 			  'input_var': input_var,
 			  'shape': shape,
 			  'name': 'input'
 			  }
-	layer2 = {'layer': 'convolution', 
-			  'num_filters': 200, 
-			  'filter_size': (16, 1),
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
 			  'name': 'conv1'
 			  }
-	layer3 = {'layer': 'convolution', 
-			  'num_filters': 200, 
-			  'filter_size': (8, 1),
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
+			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
-			  
-	layer4 = {'layer': 'convolution', 
-			  'num_filters': 200, 
-			  'filter_size': (4, 1),
+	conv3= {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (4, 1),
 			  'name': 'conv3'
 			  }
-
-	layer5 = {'layer': 'dense', 
-			  'num_units': 800, 
+	conv4 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (2, 1),
+			  'name': 'conv4'
+			  }
+	conv5 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv5'
+			  }
+	conv6 = {'layer': 'convolution', 
+			  'num_filters': 512, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (2, 1),
+			  'name': 'conv6'
+			  }
+	conv7 = {'layer': 'convolution', 
+			  'num_filters': 768, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (2, 1),
+			  'name': 'conv7'
+			  }
+	dense1 = {'layer': 'dense', 
+			  'num_units': 1028, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
+			  'activation': 'prelu',
 			  'norm': 'batch', 
-			  'activation': 'prelu', 
 			  'dropout': .5,
 			  'name': 'dense1'
 			  }
-	layer6 = {'layer': 'dense', 
-			  'num_units': 800, 
+	dense2 = {'layer': 'dense', 
+			  'num_units': 512, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
+			  'activation': 'prelu',
 			  'norm': 'batch', 
-			  'activation': 'prelu', 
 			  'dropout': .5,
 			  'name': 'dense2'
 			  }
-  	layer7 = {'layer': 'dense', 
+	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'activation': 'sigmoid', 
-			  'name': 'output'
+			  'activation': 'sigmoid',
+			  'name': 'dense3'
 			  }
-			  
-	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6, layer7]
-	network = build_network(model_layers)
 
+	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, dense1, dense2, output]
+	network = build_network(model_layers)
 
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-	                "learning_rate": 0.0001,	                
-	                "beta1": .9,
-	                "beta2": .999,
-	                "epsilon": 1e-8,
-	                "weight_norm": 7, 
-#	                "momentum": 0.9
-	                "l1": 1e-5,
-	                "l2": 1e-6
+					"learning_rate": 0.001,                 
+					"beta1": .9,
+					"beta2": .999,
+					"epsilon": 1e-6,
+					"l1": 1e-5,
+					"l2": 1e-5
 					}
 
 	return network, input_var, target_var, optimization

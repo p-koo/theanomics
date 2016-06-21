@@ -20,7 +20,7 @@ def test_motif_model(shape, num_labels):
 			  'filter_size': (15, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  #'norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'softplus',
 			  'pool_size': (4, 1),
 			  'name': 'conv1'
@@ -30,7 +30,7 @@ def test_motif_model(shape, num_labels):
 			  'filter_size': (9, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  #'norm': 'batch', 
+			  'norm': 'batch', 
 			  'activation': 'softplus',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
@@ -41,7 +41,7 @@ def test_motif_model(shape, num_labels):
 			  'b': Constant(0.05), 
 			  #'norm': 'batch', 
 			  'activation': 'softplus', 
-			  #'dropout': .5,
+			  'dropout': .5,
 			  'name': 'dense1'
 			  }
 	output = {'layer': 'dense', 
@@ -49,7 +49,7 @@ def test_motif_model(shape, num_labels):
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'activation': 'sigmoid', 
-			  'name': 'output'
+			  'name': 'dense2'
 			  }
 			  
 	model_layers = [input_layer, conv1, conv2, dense1, output] 
@@ -62,11 +62,11 @@ def test_motif_model(shape, num_labels):
 	                "learning_rate": 0.0001,	                
 	                "beta1": .9,
 	                "beta2": .999,
-	                "epsilon": 1e-8
+	                "epsilon": 1e-8,
 #	                "weight_norm": 7, 
 #	                "momentum": 0.9
-#	                "l1": 1e-5,
-#	                "l2": 1e-6
+	                "l1": 1e-4,
+	                "l2": 1e-6
 					}
 
 	return network, input_var, target_var, optimization

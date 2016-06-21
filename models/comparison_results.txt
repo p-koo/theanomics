@@ -53,6 +53,11 @@ filter=16
   valid auc-pr:     0.91756+/-0.14045
 
 
+2 conv layers
 
+perfect
+  valid loss:       0.01147
+  valid accuracy:   0.99638+/-0.00334
+  valid auc-roc:    0.99775+/-0.00355
+  valid auc-pr:     0.94741+/-0.09507
 
-  

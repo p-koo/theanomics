@@ -7,7 +7,7 @@ def build_network(model_layers, autoencode=0):
 	network, lastlayer = build_forward_layers(model_layers)
 	if autoencode == 1:
 		network = build_decode_layers(model_layers, network, lastlayer)
-
+	network['output'] = network[lastlayer]
 	return network
 
 
@@ -44,10 +44,7 @@ def build_forward_layers(model_layers, network={}):
 			
 		# add activation layer
 		if 'activation' in model_layer:
-			if name == 'output':
-				newlayer = name
-			else:
-				newlayer = name+'_active'
+			newlayer = name+'_active'
 			network[newlayer] = activation_layer(network[lastlayer], model_layer['activation']) 
 			lastlayer = newlayer
 		
