@@ -11,62 +11,84 @@ def test_motif_model(shape, num_labels):
 
 	# create model
 	input_layer = {'layer': 'input',
-			 	   'input_var': input_var,
+				   'input_var': input_var,
 				   'shape': shape,
 				   'name': 'input'
 				   }
-  	conv1 = {'layer': 'convolution', 
-			  'num_filters': 20, 
-			  'filter_size': (15, 1),
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
+			  'b': None,
 			  'norm': 'batch', 
-			  'activation': 'softplus',
-			  'pool_size': (4, 1),
+			  'activation': 'relu',
+			  'pool_size': (2, 1),
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
-			  'num_filters': 40, 
-			  'filter_size': (9, 1),
+			  'num_filters': 128, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
+			  'b': None,
 			  'norm': 'batch', 
-			  'activation': 'softplus',
+			  'activation': 'relu',
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
-   	dense1 = {'layer': 'dense', 
-			  'num_units': 200, 
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05), 
-			  #'norm': 'batch', 
-			  'activation': 'softplus', 
-			  'dropout': .5,
-			  'name': 'dense1'
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (2, 1),
+			  'name': 'conv3'
+			  }
+	conv5 = {'layer': 'convolution', 
+			  'num_filters': 512, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (5, 1),
+			  'name': 'conv4'
+			  }
+	conv4 = {'layer': 'convolution', 
+			  'num_filters': 1028, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (5, 1),
+			  'name': 'conv4'
 			  }
 	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05),
+			  'b': None,
 			  'activation': 'sigmoid', 
-			  'name': 'dense2'
+			  'name': 'dense'
 			  }
 			  
-	model_layers = [input_layer, conv1, conv2, dense1, output] 
+	model_layers = [input_layer, conv1, conv2, conv3, conv4, output] 
 	network = build_network(model_layers)
+
 
 
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-	                "learning_rate": 0.0001,	                
-	                "beta1": .9,
-	                "beta2": .999,
-	                "epsilon": 1e-8,
+					"learning_rate": 0.0001,	                
+					"beta1": .9,
+					"beta2": .999,
+					"epsilon": 1e-8,
 #	                "weight_norm": 7, 
 #	                "momentum": 0.9
-	                "l1": 1e-4,
-	                "l2": 1e-6
+					"l1": 1e-4,
+					"l2": 1e-6
 					}
 
 	return network, input_var, target_var, optimization
@@ -102,7 +124,7 @@ def test_motif_model(shape, num_labels):
 			  }
 
 
-  	conv1 = {'layer': 'convolution', 
+	conv1 = {'layer': 'convolution', 
 			  'num_filters': 300, 
 			  'filter_size': (19, 1),
 			  'W': GlorotUniform(),
@@ -143,7 +165,7 @@ def test_motif_model(shape, num_labels):
 			  'activation': 'prelu',
 			  'name': 'conv1'
 			  }
-  	conv1 = {'layer': 'convolution', 
+	conv1 = {'layer': 'convolution', 
 			  'num_filters': 128, 
 			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
@@ -190,7 +212,7 @@ def test_motif_model(shape, num_labels):
 			  'activation': 'prelu',
 			  'name': 'conv5'
 			  }
-  	conv6 = {'layer': 'convolution', 
+	conv6 = {'layer': 'convolution', 
 			  'num_filters': 128, 
 			  'filter_size': (12, 1),
 			  'W': GlorotUniform(),

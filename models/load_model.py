@@ -62,6 +62,10 @@ def load_model(model_name, shape, num_labels):
 		from .conv_autoencoder import conv_autoencoder
 		network, input_var, target_var, optimization = conv_autoencoder(shape, num_labels)
 
+	elif model_name == "autoencode_motif_model":
+		from .autoencode_motif_model import autoencode_motif_model
+		network, input_var, target_var, optimization = autoencode_motif_model(shape, num_labels)
+
 
 		
 

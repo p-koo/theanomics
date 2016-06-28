@@ -31,5 +31,6 @@ __all__ = [
          'MNIST_CNN_model',
          'test_motif_model',
          'rnac_model',
-         'conv_autoencoder'
+         'conv_autoencoder',
+         'autoencode_motif_model'
            ]

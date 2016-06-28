@@ -16,16 +16,17 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'input'
 			  }
 	conv1 = {'layer': 'convolution', 
-			  'num_filters': 64, 
-			  'filter_size': (5, 1),
+			  'num_filters': 256, 
+			  'filter_size': (7, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
+			  'pool_size': (2, 1),
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
-			  'num_filters': 128, 
+			  'num_filters': 512, 
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
@@ -34,8 +35,98 @@ def genome_motif_model(shape, num_labels):
 			  'pool_size': (2, 1),
 			  'name': 'conv2'
 			  }
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 768, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (2, 1),
+			  'name': 'conv3'
+			  }
+	conv4 = {'layer': 'convolution', 
+			  'num_filters': 1028, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1), #5
+			  'name': 'conv4'
+			  }
+	conv5 = {'layer': 'convolution', 
+			  'num_filters': 2056, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (5, 1), #5
+			  'name': 'conv5'
+			  }
+	conv6 = {'layer': 'convolution', 
+			  'num_filters': 3084, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (5, 1),
+			  'name': 'conv6'
+			  }
+	output = {'layer': 'dense', 
+			  'num_units': num_labels, 
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'activation': 'sigmoid',
+			  'name': 'dense'
+			  }
+
+	model_layers = [input_layer, conv2, conv3, conv4, conv5, conv6, output]
+	network = build_network(model_layers)
+
+	# optimization parameters
+	optimization = {"objective": "binary",
+					"optimizer": "adam",
+					"learning_rate": 0.0001,                 
+					"beta1": .9,
+					"beta2": .999,
+					"epsilon": 1e-6,
+					"l1": 1e-5,
+					"l2": 1e-6
+					}
+
+	return network, input_var, target_var, optimization
+
+"""
+
+	input_layer = {'layer': 'input',
+			  'input_var': input_var,
+			  'shape': shape,
+			  'name': 'input'
+			  }
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (7, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (7, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (2, 1),
+			  'name': 'conv2'
+			  }
 	conv3= {'layer': 'convolution', 
-			  'num_filters': 128, 
+			  'num_filters': 64, 
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
@@ -54,7 +145,7 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'conv4'
 			  }
 	conv5 = {'layer': 'convolution', 
-			  'num_filters': 256, 
+			  'num_filters': 64, 
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
@@ -63,7 +154,7 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'conv5'
 			  }
 	conv6 = {'layer': 'convolution', 
-			  'num_filters': 512, 
+			  'num_filters': 256, 
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
@@ -73,54 +164,71 @@ def genome_motif_model(shape, num_labels):
 			  'name': 'conv6'
 			  }
 	conv7 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv7'
+			  }
+	conv8 = {'layer': 'convolution', 
+			  'num_filters': 512, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1), #5
+			  'name': 'conv8'
+			  }
+	conv9 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv9'
+			  }
+	conv10 = {'layer': 'convolution', 
 			  'num_filters': 768, 
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'norm': 'batch', 
 			  'activation': 'prelu',
-			  'pool_size': (2, 1),
-			  'name': 'conv7'
+			  'pool_size': (3, 1), #5
+			  'name': 'conv10'
 			  }
-	dense1 = {'layer': 'dense', 
-			  'num_units': 1028, 
+	conv11 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05), 
-			  'activation': 'prelu',
+			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'dropout': .5,
-			  'name': 'dense1'
+			  'activation': 'prelu',
+			  'name': 'conv11'
 			  }
-	dense2 = {'layer': 'dense', 
-			  'num_units': 512, 
+	conv12 = {'layer': 'convolution', 
+			  'num_filters': 1028, 
+			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
-			  'b': Constant(0.05), 
-			  'activation': 'prelu',
+			  'b': Constant(0.05),
 			  'norm': 'batch', 
-			  'dropout': .5,
-			  'name': 'dense2'
+			  'activation': 'prelu',
+			  'pool_size': (5, 1),
+			  'name': 'conv12'
 			  }
 	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
 			  'activation': 'sigmoid',
-			  'name': 'dense3'
+			  'name': 'dense'
 			  }
 
-	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, conv7, dense1, dense2, output]
+	model_layers = [input_layer, conv1, conv2, conv3, conv4, conv5, conv6, 
+					conv7, conv8, conv9, conv10, conv11, conv12, output]
 	network = build_network(model_layers)
-
-	# optimization parameters
-	optimization = {"objective": "binary",
-					"optimizer": "adam",
-					"learning_rate": 0.001,                 
-					"beta1": .9,
-					"beta2": .999,
-					"epsilon": 1e-6,
-					"l1": 1e-5,
-					"l2": 1e-5
-					}
-
-	return network, input_var, target_var, optimization
-
+"""

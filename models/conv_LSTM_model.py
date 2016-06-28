@@ -23,88 +23,137 @@ from lasagne.init import GlorotUniform, HeNormal, HeUniform
 #   net['drop4'] = DropoutLayer(net['something'], p=0.5)
 #   net['prelu'] = ParametricRectifierLayer(net['something'], alpha=Constant(0.25), shared_axes='auto')
 
-    
+
+
+def conv_LSTM_model(shape, num_labels):
+	input_var = T.tensor4('inputs')
+	target_var = T.dmatrix('targets')
+
+	# create model
+	input_layer = {'layer': 'input',
+				   'input_var': input_var,
+				   'shape': shape,
+				   'name': 'input'
+				   }
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (7, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (2, 1),
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (2, 1),
+			  'name': 'conv2'
+			  }
+
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (5, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (2, 1),
+			  'name': 'conv3'
+			  }
+
+	lstm = {'layer': 'lstm', 
+			  'num_units': 25, 
+			  'grad_clipping': 50,
+			  'name': 'lstm'
+			  }
+
+	output = {'layer': 'dense', 
+			  'num_units': num_labels, 
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'activation': 'sigmoid', 
+			  'name': 'dense'
+			  }
+			  
+	model_layers = [input_layer, conv1, conv2, conv3, lstm, output] 
+	network = build_network(model_layers)
+
+
+	# optimization parameters
+	optimization = {"objective": "binary",
+					"optimizer": "adam",
+					"learning_rate": 0.001,                    
+					"beta1": .9,
+					"beta2": .999,
+					"epsilon": 1e-8,
+#                   "weight_norm": 7, 
+#                   "momentum": 0.9
+					"l1": 1e-4,
+					"l2": 1e-5
+					}
+
+	return network, input_var, target_var, optimization
+
+
+
+"""
+	
 def bidirectionalLSTM(l_in, num_units, grad_clipping):
-    l_forward = LSTMLayer(l_in, num_units=num_units, grad_clipping=grad_clipping)
-    l_backward = LSTMLayer(l_in, num_units=num_units, grad_clipping=grad_clipping, backwards=True)
-    return ConcatLayer([l_forward, l_backward])
-
-
-
-def inception_module(input_layer, num_filters, filter_size):
-    net = {}
-    net['filt6'] = ConvLayer(input_layer, num_filters=num_filters[0], filter_size=(filter_size[0], 1),
-                                           W=GlorotUniform(), b=Constant(.05), nonlinearity=None, 
-                                           pad='same')
-    net['norm6'] = LocalResponseNormalization2DLayer(net['filt6'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-    #net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
-    net['active6'] = ParametricRectifierLayer(net['norm6'], alpha=Constant(0.25), shared_axes='auto')
-
-    net['filt9'] = ConvLayer(input_layer, num_filters=num_filters[1], filter_size=(filter_size[1], 1), 
-                                           W=GlorotUniform(), b=Constant(.05), nonlinearity=None, 
-                                           pad='same')
-    net['norm9'] = LocalResponseNormalization2DLayer(net['filt9'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-    #net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
-    net['active9'] = ParametricRectifierLayer(net['norm9'], alpha=Constant(0.25), shared_axes='auto')
-    
-    net['filt12'] = ConvLayer(input_layer, num_filters=num_filters[2], filter_size=(filter_size[2], 1), 
-                                           W=GlorotUniform(), b=Constant(.05), nonlinearity=None, 
-                                           pad='same')
-    net['norm12'] = LocalResponseNormalization2DLayer(net['filt12'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-    #net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
-    net['active12'] = ParametricRectifierLayer(net['norm12'], alpha=Constant(0.25), shared_axes='auto')
-    
-    net['output'] = ConcatLayer([net['active6'], net['active9'], net['active12']])
-    return net['output']
-    
+	l_forward = LSTMLayer(l_in, num_units=num_units, grad_clipping=grad_clipping)
+	l_backward = LSTMLayer(l_in, num_units=num_units, grad_clipping=grad_clipping, backwards=True)
+	return ConcatLayer([l_forward, l_backward])
 
 
 def conv_LSTM_model(shape, num_labels):
 
-    input_var = T.tensor4('inputs')
-    target_var = T.dmatrix('targets')
+	input_var = T.tensor4('inputs')
+	target_var = T.dmatrix('targets')
 
-    net = {}
-    net['input'] = InputLayer(input_var=input_var, shape=shape)
-    
-    """
-    # stage 1 - 2 convolution layers   
-    net['incept1'] = inception_module(net['input'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
-    net['pool1'] = PoolLayer(net['incept1'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
+	net = {}
+	net['input'] = InputLayer(input_var=input_var, shape=shape)
 
-    # inception module on motifs
-    net['incept2'] = inception_module(net['pool1'], num_filters=[150, 100, 50], filter_size=[5, 9, 13])
-    net['pool2'] = PoolLayer(net['incept2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
-    """
-
-    net['conv2'] = ConvLayer(net['pool1'], num_filters=300, filter_size=(8, 1), stride=(1, 1),
-                                           W=GlorotUniform(), b=Constant(.05), nonlinearity=None)
-    net['norm2'] = LocalResponseNormalization2DLayer(net['conv2'], alpha=.001/9.0, k=1., beta=0.75, n=5)
-    #net['norm1'] = BatchNormLayer(net['concat'], epsilon=0.001)
-    net['active2'] = NonlinearityLayer(net['norm2'], leaky_rectify)
-    net['pool2'] = PoolLayer(net['active2'], pool_size=(4, 1), stride=(4, 1), ignore_border=False)
+	net['conv1'] = ConvLayer(net['input'], num_filters=64, filter_size=(5, 1), stride=(1, 1),
+										   W=GlorotUniform(), b=Constant(.05), pad='same', nonlinearity=None)
+	net['conv1_norm'] = BatchNormLayer(net['conv1'], epsilon=0.001)
+	net['conv1_active'] = NonlinearityLayer(net['conv1_norm'], leaky_rectify)
+	net['conv1_pool'] = PoolLayer(net['conv1_active'], pool_size=(2, 1), stride=(2, 1), ignore_border=False)
+	
+	net['conv2'] = ConvLayer(net['conv1_pool'], num_filters=128, filter_size=(5, 1), stride=(1, 1),
+										   W=GlorotUniform(), b=Constant(.05), pad='same', nonlinearity=None)
+	net['conv2_norm'] = BatchNormLayer(net['conv2'], epsilon=0.001)
+	net['conv2_active'] = NonlinearityLayer(net['conv2_norm'], leaky_rectify)
+	net['conv2_pool'] = PoolLayer(net['conv2_active'], pool_size=(2, 1), stride=(2, 1), ignore_border=False)
 
 
-    net['lstm'] = bidirectionalLSTM(net['pool2'], num_units=200, grad_clipping=100)
-    net['drop5'] = DropoutLayer(net['lstm'], p=0.3)
+	net['lstm'] = bidirectionalLSTM(net['conv2_pool'], num_units=50, grad_clipping=100)
+	net['lstm2'] = bidirectionalLSTM(net['lstm'], num_units=50, grad_clipping=100)	
 
-    # stage 4 - 2 dense layers for classification            
-    net['dense6'] = DenseLayer(net['drop5'], num_units=300, W=GlorotUniform(), b=None, nonlinearity=None)
-    net['batch6'] = BatchNormLayer(net['dense6'], epsilon=0.001)
-    net['active6'] = ParametricRectifierLayer(net['batch6'], alpha=Constant(0.25), shared_axes='auto')
-    net['drop6'] = DropoutLayer(net['active6'], p=0.5)
+	net['dense'] = DenseLayer(net['lstm2'], num_units=num_labels, W=GlorotUniform(), b=Constant(0.05), nonlinearity=None)
+	net['output'] = NonlinearityLayer(net['dense'], sigmoid)
 
-    net['dense7'] = DenseLayer(net['drop6'], num_units=num_labels, W=GlorotUniform(), b=None, nonlinearity=None)
-    net['output'] = NonlinearityLayer(net['batch7'], sigmoid)
+	
+	network = net
 
-    
-    optimization = {"objective": "binary",
-                    "optimizer": "adam"
-#                   "learning_rate": 0.1,
+
+	# optimization parameters
+	optimization = {"objective": "binary",
+					"optimizer": "adam",
+					"learning_rate": 0.001,                    
+					"beta1": .9,
+					"beta2": .999,
+					"epsilon": 1e-8,
+#                   "weight_norm": 7, 
 #                   "momentum": 0.9
-#                   "weight_norm": 10
-                    #"l1": 1e-7,
-                    #"l2": 1e-8
-                    }
-    return net, input_var, target_var, optimization
+					"l1": 1e-4,
+					"l2": 1e-5
+					}
 
+	return network, input_var, target_var, optimization
+
+"""

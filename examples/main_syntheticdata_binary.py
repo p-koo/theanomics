@@ -14,42 +14,42 @@ np.random.seed(247) # for reproducibility
 #------------------------------------------------------------------------------
 # load data
 
-name = 'MotifSimulation_correlated'
+name = 'MotifSimulation'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'synthetic_correlated_motifs_100000_1.hdf5')
-#filepath = os.path.join(datapath, 'synthetic_random_motifs_100000_1.hdf5')
+filepath = os.path.join(datapath, 'Unlocalized_N=100000_S=200_M=50_G=20_data.pickle')
 
-"""
-name = 'MotifSimulation_binary'
-datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'N=100000_S=200_M=30_G=20_data.pickle')
-"""
-train, valid, test = load_data(name, filepath)
+print "loading data from: " + filepath
+f = open(filepath, 'rb')
+print "loading train data"
+train = cPickle.load(f)
+print "loading cross-validation data"
+cross_validation = cPickle.load(f)
+print "loading test data"
+test = cPickle.load(f)
+f.close()
+X_train = train[0].transpose((0,1,2)).astype(np.float32)
+y_train = train[1].astype(np.int32)
+X_val = cross_validation[0].transpose((0,1,2)).astype(np.float32)
+y_val = cross_validation[1].astype(np.int32)
+X_test = test[0].transpose((0,1,2)).astype(np.float32)
+y_test = test[1].astype(np.int32)
+
+X_train = np.expand_dims(X_train, axis=3)
+X_val = np.expand_dims(X_val, axis=3)
+X_test = np.expand_dims(X_test, axis=3)
+
+train = (X_train, y_train, train[2])
+valid = (X_val, y_val, cross_validation[2])
+test = (X_test, y_test, test[2])
+
+
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
-
-
-# calculate correlations
-labels = np.vstack([train[1], valid[1]])
-N = labels.shape[0]
-rho_ij = np.zeros((num_labels, num_labels))
-for i in range(num_labels):
-    p_i = np.sum(labels[:,i])/N
-    for j in range(i):
-        p_j = np.sum(labels[:,j])/N    
-        p_ij = np.sum(labels[:,i]*labels[:,j])/N
-        norm = np.sqrt(p_i*(1-p_i)) * np.sqrt(p_j*(1-p_j))
-        rho_ij[j,i] = (p_ij - p_i*p_j)/norm
-
-f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','wb')
-cPickle.dump(rho_ij, f)
-f.close()
-
 
 #-------------------------------------------------------------------------------------
 
 # build model
-model_name = "binary_genome_motif_model"
+model_name = "genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 #nnmodel.print_layers()
 

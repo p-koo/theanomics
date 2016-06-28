@@ -18,32 +18,15 @@ np.random.seed(247) # for reproducibility
 
 name = 'Basset' # 'DeepSea'
 datapath = '/home/peter/Data/'+name
-options = {"class_range": range(164)}
+options = {"class_range": range(1)}
 train, valid, test = load_data(name, datapath, options)
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = np.round(train[1].shape[1])
 
-# calculate correlations
-labels = train[1].astype(float) #np.vstack([train[1], valid[1]]).astype(np.float32)
-N = labels.shape[0]
-rho_ij = np.zeros((num_labels, num_labels))
-for i in range(num_labels):
-    p_i = np.sum(labels[:,i])/N
-    for j in range(i):
-        p_j = np.sum(labels[:,j])/N    
-        p_ij = np.sum(labels[:,i]*labels[:,j])/N
-        norm = np.sqrt(p_i*(1-p_i)) * np.sqrt(p_j*(1-p_j))
-        rho_ij[j,i] = (p_ij - p_i*p_j)/norm
-        
-f = open('/home/peter/Code/Deepomics/examples/rho_ij.pickle','wb')
-cPickle.dump(rho_ij, f)
-f.close()
-
-
 #-------------------------------------------------------------------------------------
 
 # build model
-model_name = "binary_genome_motif_model"
+model_name = "genome_motif_model"
 nnmodel = NeuralNet(model_name, shape, num_labels)
 
 #nnmodel.print_layers()
