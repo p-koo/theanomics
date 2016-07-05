@@ -290,7 +290,6 @@ class MonitorPerformance():
 		min_loss, min_epoch = self.get_min_loss()
 		status = True
 
-
 		if min_loss < current_loss:
 			if patience - (current_epoch - min_epoch) < 0:
 				status = False

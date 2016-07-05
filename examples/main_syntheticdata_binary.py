@@ -9,7 +9,7 @@ from src import make_directory
 from models import load_model
 from data import load_data
 from six.moves import cPickle
-np.random.seed(247) # for reproducibility
+#np.random.seed(247) # for reproducibility
 
 #------------------------------------------------------------------------------
 # load data
@@ -49,7 +49,7 @@ num_labels = np.round(train[1].shape[1])
 #-------------------------------------------------------------------------------------
 
 # build model
-model_name = "genome_motif_model"
+model_name = "autoencode_motif_model" #"genome_motif_model" # "deepsea_model" #
 nnmodel = NeuralNet(model_name, shape, num_labels)
 #nnmodel.print_layers()
 

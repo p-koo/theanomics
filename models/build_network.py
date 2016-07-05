@@ -93,7 +93,7 @@ def single_layer(model_layer, network_last):
 											  filter_size=model_layer['filter_size'],
 											  W=model_layer['W'],
 											  b=None, 
-											  pad='same',
+											  pad=model_layer['pad'],
 											  nonlinearity=None)
 
 	elif model_layer['layer'] == 'lstm':

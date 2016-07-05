@@ -16,64 +16,46 @@ def test_motif_model(shape, num_labels):
 				   'name': 'input'
 				   }
 	conv1 = {'layer': 'convolution', 
-			  'num_filters': 64, 
-			  'filter_size': (5, 1),
+			  'num_filters': 32, #30
+			  'filter_size': (11, 1), #189
 			  'W': GlorotUniform(),
 			  'b': None,
+			  'pad': 'same',
 			  'norm': 'batch', 
 			  'activation': 'relu',
-			  'pool_size': (2, 1),
+			  'pool_size': (13, 1), #20
 			  'name': 'conv1'
 			  }
 	conv2 = {'layer': 'convolution', 
-			  'num_filters': 128, 
+			  'num_filters': 50,  #14
 			  'filter_size': (5, 1),
 			  'W': GlorotUniform(),
 			  'b': None,
 			  'norm': 'batch', 
 			  'activation': 'relu',
-			  'pool_size': (2, 1),
+			  'pool_size': (4, 1), #8
+			  'pad': 'same',
 			  'name': 'conv2'
 			  }
 	conv3 = {'layer': 'convolution', 
-			  'num_filters': 256, 
-			  'filter_size': (5, 1),
+			  'num_filters': 128,  #30
+			  'filter_size': (15, 1),
 			  'W': GlorotUniform(),
 			  'b': None,
-			  'norm': 'batch', 
+#			  'norm': 'batch', 
 			  'activation': 'relu',
-			  'pool_size': (2, 1),
+			  'pad': 'valid',
 			  'name': 'conv3'
-			  }
-	conv5 = {'layer': 'convolution', 
-			  'num_filters': 512, 
-			  'filter_size': (5, 1),
-			  'W': GlorotUniform(),
-			  'b': None,
-			  'norm': 'batch', 
-			  'activation': 'relu',
-			  'pool_size': (5, 1),
-			  'name': 'conv4'
-			  }
-	conv4 = {'layer': 'convolution', 
-			  'num_filters': 1028, 
-			  'filter_size': (5, 1),
-			  'W': GlorotUniform(),
-			  'b': None,
-			  'norm': 'batch', 
-			  'activation': 'relu',
-			  'pool_size': (5, 1),
-			  'name': 'conv4'
 			  }
 	output = {'layer': 'dense', 
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
-			  'b': None,
+			  'b': Constant(.05),
 			  'activation': 'sigmoid', 
-			  'name': 'dense'
+			  'name': 'dense2'
 			  }
 			  
-	model_layers = [input_layer, conv1, conv2, conv3, conv4, output] 
+	model_layers = [input_layer,output] 
 	network = build_network(model_layers)
 
 
@@ -81,13 +63,13 @@ def test_motif_model(shape, num_labels):
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-					"learning_rate": 0.0001,	                
+					"learning_rate": 0.001,	                
 					"beta1": .9,
 					"beta2": .999,
 					"epsilon": 1e-8,
 #	                "weight_norm": 7, 
 #	                "momentum": 0.9
-					"l1": 1e-4,
+					"l1": 1e-5,
 					"l2": 1e-6
 					}
 
