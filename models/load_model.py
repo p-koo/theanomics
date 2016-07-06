@@ -27,21 +27,6 @@ def load_model(model_name, shape, num_labels):
 		from .jaspar_motif_model2 import jaspar_motif_model2
 		network, input_var, target_var, optimization = jaspar_motif_model2(shape, num_labels)
 
-	elif model_name == "cyclic_genome_motif_model":
-		from .cyclic_genome_motif_model import cyclic_genome_motif_model
-		network, input_var, target_var, optimization = cyclic_genome_motif_model(shape, num_labels)
-
-
-	elif model_name == "inception_genome_motif_model":
-		from .inception_genome_motif_model import inception_genome_motif_model
-		network, input_var, target_var, optimization = inception_genome_motif_model(shape, num_labels)
-
-
-	elif model_name == "recurrent_inception_motif_model":
-		from .recurrent_inception_motif_model import recurrent_inception_motif_model
-		network, input_var, target_var, optimization = recurrent_inception_motif_model(shape, num_labels)
-
-
 	elif model_name == "conv_LSTM_model":
 		from .conv_LSTM_model import conv_LSTM_model
 		network, input_var, target_var, optimization = conv_LSTM_model(shape, num_labels)
@@ -58,18 +43,9 @@ def load_model(model_name, shape, num_labels):
 		from .rnac_model import rnac_model
 		network, input_var, target_var, optimization = rnac_model(shape, num_labels)
 
-	elif model_name == "conv_autoencoder":
-		from .conv_autoencoder import conv_autoencoder
-		network, input_var, target_var, optimization = conv_autoencoder(shape, num_labels)
-
-	elif model_name == "autoencode_motif_model":
-		from .autoencode_motif_model import autoencode_motif_model
-		network, input_var, target_var, optimization = autoencode_motif_model(shape, num_labels)
-
-
-		
-
-		
+	elif model_name == "CMAP_model":
+		from .CMAP_model import CMAP_model
+		network, input_var, target_var, optimization = CMAP_model(shape, num_labels)
 
 	return network, input_var, target_var, optimization
 

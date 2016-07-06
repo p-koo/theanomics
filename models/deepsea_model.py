@@ -52,6 +52,7 @@ def deepsea_model(shape, num_labels):
 			  'num_units': 1000, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
+			  'norm': 'batch', 
 			  'dropout': .5,
 			  'activation': 'relu',
 			  'name': 'dense1'

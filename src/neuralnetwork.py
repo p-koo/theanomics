@@ -7,7 +7,8 @@ import time
 import theano
 import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization
-
+from lasagne.regularization import apply_penalty, l1, l2
+from scipy import stats
 
 sys.path.append(os.path.realpath('..'))
 from models import load_model
@@ -106,13 +107,13 @@ class NeuralNet:
 
 		performance = MonitorPerformance('test',self.objective, verbose=1)
 
-		if np.ndim(test[1]) == 2:
-			label = np.empty((1,test[1].shape[1]))
-			prediction = np.empty((1,test[1].shape[1]))
-		else:
+		if self.objective == 'categorical':
 			label = np.empty(1)
 			prediction = np.empty((1,max(test[1])+1))
-
+		else:
+			label = np.empty((1,test[1].shape[1]))
+			prediction = np.empty((1,test[1].shape[1]))
+		
 		num_batches = test[1].shape[0] // batch_size
 		batches = batch_generator(test[0], test[1], batch_size, shuffle=False)
 		for epoch in range(num_batches):
@@ -124,25 +125,6 @@ class NeuralNet:
 			label = np.concatenate((label, y), axis=0)
 
 		return performance.get_mean_loss(), prediction[1::], label[1::]
-
-	def train_step_ae(self,  train, batch_size, verbose=1):        
-		"""Train a mini-batch --> single epoch"""
-
-		# set timer for epoch run
-		performance = MonitorPerformance('train',self.objective, verbose)
-		performance.set_start_time(start_time = time.time())
-
-		# train on mini-batch with random shuffling
-		num_batches = train[0].shape[0] // batch_size
-		batches = batch_generator(train[0], train[1], batch_size)
-		value = 0
-		for epoch in range(num_batches):
-			X, y = next(batches)
-			loss, prediction = self.train_fun(X)
-			performance.add_loss(loss)
-			performance.progress_bar(epoch+1., num_batches, 0)
-		print "" 
-		return performance.get_mean_loss()		
 
 	def train_step(self,  train, batch_size, verbose=1):        
 		"""Train a mini-batch --> single epoch"""
@@ -172,7 +154,7 @@ class NeuralNet:
 		else:
 			R = []
 			for i in range(prediction.shape[1]):
-				R.append(np.corrcoef(prediction[:,i], y[:,i]))
+				R.append(stats.spearmanr(prediction[:,i], y[:,i])[0])
 			return np.mean(R)
 
 	def test_model(self, test, batch_size, name):
@@ -313,10 +295,11 @@ class MonitorPerformance():
 					print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 					print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
 					print("  " + name + " auc-pr:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
-				elif (self.objective == 'ols') | (self.objective == 'gls'):
+				elif (self.objective == 'ols') | (self.objective == 'gls') | (self.objective == 'autoencoder'):
 					print("  " + name + " Pearson's R:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 					print("  " + name + " rsquare:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
-					print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
+					print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
+					
 
 	def progress_bar(self, epoch, num_batches, value, bar_length=30):
 		if self.verbose == 1:
@@ -327,12 +310,9 @@ class MonitorPerformance():
 			if (self.objective == "binary") | (self.objective == "categorical") | (self.objective == "multi-binary") | (self.objective == 'hinge'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- accuracy=%.2f%%  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value*100))
-			elif (self.objective == 'ols') | (self.objective == 'gls'):
+			elif (self.objective == 'ols') | (self.objective == 'gls') | (self.objective == 'autoencoder'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
-			elif (self.objective == 'autoencoder'):
-				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f  " \
-				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss()))
 			sys.stdout.flush()
 
 
@@ -356,7 +336,15 @@ def build_optimizer(network, input_var, target_var, optimization, learning_rate)
 
 	if optimization["objective"] == 'autoencoder':
 		prediction = layers.get_output(network['output'], deterministic=False)
-		loss = build_loss(network['output'], input_var, prediction, optimization)
+		loss1 = build_loss(input_var, prediction, optimization)
+
+		prediction2 = layers.get_output(network['encode'], deterministic=False)
+		loss2 = build_loss(target_var, prediction2, optimization)
+
+		loss = loss1 + loss2
+
+		# regularize parameters
+		loss += regularization(network['output'], optimization)
 
 		# calculate and clip gradients
 		params = layers.get_all_params(network['output'], trainable=True)    
@@ -370,16 +358,23 @@ def build_optimizer(network, input_var, target_var, optimization, learning_rate)
 
 		# test/validation set 
 		test_prediction = layers.get_output(network['output'], deterministic=True)
-		test_loss = build_loss(network['output'], input_var, test_prediction, optimization)
+		test_loss1 = build_loss(input_var, test_prediction, optimization)
+		test_prediction2 = layers.get_output(network['encode'], deterministic=True)
+		test_loss2 = build_loss(target_var, test_prediction2, optimization)
+		test_loss = test_loss1 + test_loss2
+
 
 		# create theano function
-		train_fun = theano.function([input_var], [loss, prediction], updates=update_op)
-		test_fun = theano.function([input_var], [test_loss, test_prediction])
+		train_fun = theano.function([input_var, target_var], [loss, prediction2], updates=update_op)
+		test_fun = theano.function([input_var, target_var], [test_loss, test_prediction2])
 
 	else:
 		# build loss function
 		prediction = layers.get_output(network['output'], deterministic=False)
-		loss = build_loss(network['output'], target_var, prediction, optimization)
+		loss = build_loss(target_var, prediction, optimization)
+
+		# regularize parameters
+		loss += regularization(network['output'], optimization)
 
 		# calculate and clip gradients
 		params = layers.get_all_params(network['output'], trainable=True)    
@@ -393,7 +388,7 @@ def build_optimizer(network, input_var, target_var, optimization, learning_rate)
 
 		# test/validation set 
 		test_prediction = layers.get_output(network['output'], deterministic=True)
-		test_loss = build_loss(network['output'], target_var, test_prediction, optimization)
+		test_loss = build_loss(target_var, test_prediction, optimization)
 
 		# create theano function
 		train_fun = theano.function([input_var, target_var], [loss, prediction], updates=update_op)
@@ -402,7 +397,7 @@ def build_optimizer(network, input_var, target_var, optimization, learning_rate)
 	return train_fun, test_fun
 
 
-def build_loss(network, target_var, prediction, optimization):
+def build_loss(target_var, prediction, optimization):
 	""" setup loss function with weight decay regularization """
 
 	if optimization["objective"] == 'categorical':
@@ -440,18 +435,23 @@ def build_loss(network, target_var, prediction, optimization):
 		#prediction = T.dot(optimization['rho_ij'],prediction.T).T
 		#loss = T.nnet.relu(1 - prediction*target_var - (1-prediction)*(1-target_var))
 
-
 	#loss = loss.mean()
 	loss = objectives.aggregate(loss, mode='mean')
 
+	return loss
+
+
+def regularization(network, optimization):
+	all_params = layers.get_all_params(network, regularizable=True)    
+
 	# weight-decay regularization
+	loss = 0
 	if "l1" in optimization:
-		l1_penalty = regularization.regularize_network_params(network, regularization.l1) * optimization["l1"]
+		l1_penalty = apply_penalty(all_params, l1) * optimization["l1"]
 		loss += l1_penalty
 	if "l2" in optimization:
-		l2_penalty = regularization.regularize_network_params(network, regularization.l2) * optimization["l2"]        
+		l2_penalty = apply_penalty(all_params, l2)* optimization["l2"]        
 		loss += l2_penalty 
-
 	return loss
 
 
@@ -481,8 +481,7 @@ def build_updates(grad, params, update_params, learning_rate):
 	elif update_params['optimizer'] == 'adagrad':
 		if learning_rate:
 			update_op = updates.adagrad(grad, params, 
-							  learning_rate=learning_rate, 
-							  epsilon=update_params['epsilon'])
+							  learning_rate=learning_rate)
 		else:
 			update_op = updates.adagrad(grad, params)
 
@@ -490,8 +489,7 @@ def build_updates(grad, params, update_params, learning_rate):
 		if learning_rate:
 			update_op = updates.rmsprop(grad, params, 
 							  learning_rate=learning_rate, 
-							  rho=update_params['rho'], 
-							  epsilon=update_params['epsilon'])
+							  rho=update_params['rho'])
 		else:
 			update_op = updates.rmsprop(grad, params)
 	
@@ -500,8 +498,7 @@ def build_updates(grad, params, update_params, learning_rate):
 			update_op = updates.adam(grad, params, 
 							learning_rate=learning_rate, 
 							beta1=update_params['beta1'], 
-							beta2=update_params['beta2'], 
-							epsilon=update_params['epsilon'])
+							beta2=update_params['beta2'])
 		else:
 			update_op = updates.adam(grad, params)
   

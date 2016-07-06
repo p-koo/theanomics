@@ -51,6 +51,7 @@ def test_motif_model(shape, num_labels):
 			  'num_units': num_labels, 
 			  'W': GlorotUniform(),
 			  'b': Constant(.05),
+			  'norm': 'batch', 
 			  'activation': 'sigmoid', 
 			  'name': 'dense2'
 			  }

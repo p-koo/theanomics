@@ -51,7 +51,9 @@ def pearson_corr_metric(label, prediction):
 	num_labels = label.shape[1]
 	corr = []
 	for i in range(num_labels):
-		corr.append(np.corrcoef(label[:,i], prediction[:,i]))
+		#corr.append(np.corrcoef(label[:,i], prediction[:,i]))
+		corr.append(stats.spearmanr(label[:,i], prediction[:,i])[0])
+		
 	return corr
 
 def rsquare_metric(label, prediction):
@@ -115,7 +117,7 @@ def calculate_metrics(label, prediction, objective):
 		#print auc_roc
 		#print "PR"
 		#print auc_pr
-	elif (objective == 'ols') | (objective == 'gls'):
+	elif (objective == 'ols') | (objective == 'gls') | (objective == 'autoencoder'):
 		corr = pearson_corr_metric(label, prediction)
 		rsquare, slope = rsquare_metric(label, prediction)
 		mean = [np.nanmean(corr), np.nanmean(rsquare), np.nanmean(slope)]
