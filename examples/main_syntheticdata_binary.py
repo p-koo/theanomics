@@ -49,7 +49,7 @@ num_labels = np.round(train[1].shape[1])
 #-------------------------------------------------------------------------------------
 
 # build model
-model_name = "deepsea_model" #"genome_motif_model" # "deepsea_model" #
+model_name = "test_motif_model" #"genome_motif_model" # "deepsea_model" #
 nnmodel = NeuralNet(model_name, shape, num_labels)
 #nnmodel.print_layers()
 

@@ -405,7 +405,6 @@ def build_loss(target_var, prediction, optimization):
 		loss = objectives.categorical_crossentropy(prediction, target_var)
 
 	elif optimization["objective"] == 'binary':
-		prediction = T.clip(prediction, 1e-17, 1-1e-7)
 		#loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		loss = objectives.binary_crossentropy(prediction, target_var)
 

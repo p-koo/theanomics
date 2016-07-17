@@ -1,0 +1,228 @@
+#/bin/python
+import theano.tensor as T
+from lasagne.init import Constant, Normal, Uniform, GlorotNormal
+from lasagne.init import GlorotUniform, HeNormal, HeUniform
+from build_network import build_network
+from lasagne import layers, nonlinearities
+
+def test_motif_model(shape, num_labels):
+
+	input_var = T.tensor4('inputs')
+	target_var = T.dmatrix('targets')
+
+	net = {}
+	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=40, filter_size=(9, 1), stride=(1, 1),
+					 W=GlorotUniform(), b=None, nonlinearity=nonlinearities.rectify, pad='same')
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1'], pool_size=(20, 1), stride=(20, 1), ignore_border=False)
+
+	net['conv2'] = layers.Conv2DLayer(net['conv1_pool'], num_filters=20, filter_size=(10, 1), stride=(1, 1),
+						   W=GlorotUniform(), b=None, nonlinearity=nonlinearities.sigmoid, pad='valid')
+
+	net['output'] = layers.ReshapeLayer(net['conv2'], [-1, num_labels])
+
+	# optimization parameters
+	optimization = {"objective": "binary",
+					"optimizer": "adam",
+					"learning_rate": 0.001,	                
+					"beta1": .9,
+					"beta2": .999
+#	                "weight_norm": 7, 
+#	                "momentum": 0.9
+					#"l1": 1e-5,
+					#"l2": 1e-6
+					}
+
+	return net, input_var, target_var, optimization
+
+"""
+
+	# create model
+	input_layer = {'layer': 'input',
+				   'input_var': input_var,
+				   'shape': shape,
+				   'name': 'input'
+				   }
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 35, #30
+			  'filter_size': (9, 1), #189
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'pad': 'same',
+			  'norm': 'batch', 
+			  'activation': 'relu',
+			  'pool_size': (20, 1), #20
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 20,  #16
+			  'filter_size': (10, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'norm': 'batch', 
+			  'activation': 'linear',
+			  #'pool_size': (5, 1), #20
+			  'pad': 'valid',
+			  'name': 'conv2'
+			  }
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 40,  #16
+			  'filter_size': (3, 1),
+			  'W': GlorotUniform(),
+			  'b': None,
+			  'activation': 'linear',
+			  'pad': 'valid',
+			  'name': 'conv3'
+			  }
+	output = {'layer': 'dense', 
+			  'num_units': num_labels, 
+			  'W': Constant(1.),
+			  'b': None,
+			  'activation': 'sigmoid', 
+			  'name': 'dense2'
+			  }
+			  
+	model_layers = [input_layer, conv1, conv2, output] 
+	network = build_network(model_layers)
+
+
+
+
+
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (4, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (10, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv2'
+			  }
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (16, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1),
+			  'name': 'conv3'
+			  }
+
+
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 300, 
+			  'filter_size': (19, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1),
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 300, 
+			  'filter_size': (8, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (4, 1),
+			  'name': 'conv2'
+			  }
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 300, 
+			  'filter_size': (6, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (4, 1),
+			  'name': 'conv3'
+			  }
+
+
+	conv10 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (4, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv1'
+			  }
+	conv1 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (8, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv1'
+			  }
+	conv2 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (12, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1),
+			  'name': 'conv2'
+			  }
+	conv3 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (4, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv3'
+			  }
+	conv4 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (12, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1),
+			  'name': 'conv4'
+			  }
+	conv5 = {'layer': 'convolution', 
+			  'num_filters': 64, 
+			  'filter_size': (4, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv5'
+			  }
+	conv6 = {'layer': 'convolution', 
+			  'num_filters': 128, 
+			  'filter_size': (12, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'pool_size': (3, 1),
+			  'name': 'conv6'
+			  }
+	conv8 = {'layer': 'convolution', 
+			  'num_filters': 256, 
+			  'filter_size': (8, 1),
+			  'W': GlorotUniform(),
+			  'b': Constant(0.05),
+			  'norm': 'batch', 
+			  'activation': 'prelu',
+			  'name': 'conv8'
+			  }"""
