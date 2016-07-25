@@ -84,6 +84,44 @@ def batch_generator(X, y, batch_size=128, shuffle=True):
 # data file and output files
 outputname = 'highway_corr2'
 datapath='/home/peter/Data/CMAP'
+filepath = os.path.join(datapath, 'Results', outputname)
+
+trainmat = h5py.File(os.path.join(datapath, 'data_set.hd5f'), 'r')
+filepath = os.path.join(datapath, 'Results', outputname)
+landmark= np.array(trainmat['landmark']).astype(np.float32)
+nonlandmark = np.array(trainmat['nonlandmark']).astype(np.float32)
+shuffle_index = np.random.permutation(100000)
+landmark = landmark[:,shuffle_index]
+nonlandmark = nonlandmark[:,shuffle_index]
+
+
+def normalize_data(landmark, mean_landmark, std_landmark, num_samples):
+    landmark = (landmark - mean_landmark)/std_landmark
+    landmark = landmark.transpose([1,0])
+    return landmark.astype(np.float32)
+
+
+#landmark = landmark.transpose([1,0]).astype(np.float32)
+#nonlandmark = nonlandmark.transpose([1,0]).astype(np.float32)
+
+
+split=10000
+test_landmark = landmark[:split]
+test_nonlandmark = nonlandmark[:split]
+landmark = landmark[split:]
+nonlandmark = nonlandmark[split:]
+
+
+mean_landmark = np.mean(landmark)
+std_landmark = np.std(landmark)
+landmark = normalize_data(landmark, mean_landmark, std_landmark, landmark.shape[1])
+nonlandmark = normalize_data(nonlandmark, mean_landmark, std_landmark, nonlandmark.shape[1])
+
+
+mean_landmark = np.mean(test_landmark)
+std_landmark = np.std(test_landmark)
+test_landmark = normalize_data(test_landmark, mean_landmark, std_landmark, test_landmark.shape[1])
+test_nonlandmark = normalize_data(test_nonlandmark, mean_landmark, std_landmark, nonlandmark.shape[1])
 
 
 # setup model
@@ -96,7 +134,7 @@ prediction = layers.get_output(network, deterministic=False)
 loss_corr = T.sum(target_var*prediction)/T.sqrt(T.sum(prediction**2)*T.sum(target_var**2))
 loss = -loss_corr.mean()
 
-#prediction = layers.get_output(network['output'], deterministic=False)
+#prediction = layers.get_output(network, deterministic=False)
 loss_landmark = objectives.squared_error(prediction, target_var)
 loss += loss_landmark.mean()
 
@@ -131,40 +169,6 @@ test_loss = test_loss.mean()
 # compile theano functions
 train_fn = theano.function([input_var, target_var], loss, updates=updates)
 valid_fn = theano.function([input_var, target_var], [test_loss, test_prediction])
-
-
-trainmat = h5py.File(os.path.join(datapath, 'data_set.hd5f'), 'r')
-filepath = os.path.join(datapath, 'Results', outputname)
-landmark= np.array(trainmat['landmark']).astype(np.float32)
-nonlandmark = np.array(trainmat['nonlandmark']).astype(np.float32)
-shuffle_index = np.random.permutation(100000)
-landmark = landmark[:,shuffle_index]
-nonlandmark = nonlandmark[:,shuffle_index]
-
-
-def normalize_data(landmark, mean_landmark, std_landmark, num_samples):
-    landmark = (landmark - np.outer(mean_landmark,np.ones(num_samples)))/np.outer(std_landmark,np.ones(num_samples))
-    landmark = landmark.transpose([1,0])
-    return landmark.astype(np.float32)
-
-mean_landmark = np.mean(landmark, axis=1)
-std_landmark = np.std(landmark, axis=1)
-landmark = normalize_data(landmark, mean_landmark, std_landmark, landmark.shape[1])
-
-#mean_nonlandmark = np.mean(nonlandmark, axis=1)
-#std_nonlandmark = np.std(nonlandmark, axis=1)
-#nonlandmark = normalize_data(nonlandmark, mean_nonlandmark, std_nonlandmark, nonlandmark.shape[1])
-
-#landmark = landmark.transpose([1,0]).astype(np.float32)
-nonlandmark = nonlandmark.transpose([1,0]).astype(np.float32)
-
-
-split=10000
-test_landmark = landmark[:split]
-test_nonlandmark = nonlandmark[:split]
-landmark = landmark[split:]
-nonlandmark = nonlandmark[split:]
-
 
 
 # train model
