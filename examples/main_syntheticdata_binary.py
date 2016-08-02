@@ -15,8 +15,9 @@ from six.moves import cPickle
 # load data
 
 name = 'MotifSimulation'
+filename = 'Unlocalized_N=100000_S=200_M=300_G=30_data.pickle'
 datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'Unlocalized_N=100000_S=200_M=50_G=20_data.pickle')
+filepath = os.path.join(datapath, filename)
 
 print "loading data from: " + filepath
 f = open(filepath, 'rb')
