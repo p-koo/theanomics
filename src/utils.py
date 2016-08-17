@@ -113,10 +113,10 @@ def calculate_metrics(label, prediction, objective):
 		auc_pr, pr = pr_metrics(label, prediction)
 		mean = [np.nanmean(accuracy), np.nanmean(auc_roc), np.nanmean(auc_pr)]
 		std = [np.nanstd(accuracy), np.nanstd(auc_roc), np.nanstd(auc_pr)]
-		#print "ROC"
-		#print auc_roc
-		#print "PR"
-		#print auc_pr
+		print "ROC"
+		print auc_roc
+		print "PR"
+		print auc_pr
 	elif (objective == 'ols') | (objective == 'gls') | (objective == 'autoencoder'):
 		corr = pearson_corr_metric(label, prediction)
 		rsquare, slope = rsquare_metric(label, prediction)
@@ -134,19 +134,6 @@ def get_performance(savepath):
 		roc = cPickle.load(f)
 		pr = cPickle.load(f)
 	return cost, metric, metric_std, roc, pr
-
-
-def get_layer_activity(layer, x):
-
-	# compile theano function
-	input_var = T.tensor4('input').astype(theano.config.floatX)
-	get_activity = theano.function([input_var], get_output(layer, input_var))
-
-	# get activation info
-	activity = get_activity(x)
-
-	return activity
-
 
 
 def load_JASPAR_motifs(jaspar_path, MAX):

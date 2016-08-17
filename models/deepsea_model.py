@@ -2,9 +2,9 @@
 import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
-from build_network import build_network
+from src.build_network import build_network
 
-def deepsea_model(shape, num_labels):
+def model(shape, num_labels):
 
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')

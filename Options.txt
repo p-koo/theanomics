@@ -1,0 +1,157 @@
+
+data.shape --> (num_data, num_channels, 1st_dimension, 2nd_dimension)
+
+------------------------------------------------------------------
+ theano variables representing input data
+------------------------------------------------------------------
+     
+input_var = T.tensor4('inputs')     <-- tensor3, tensor4 
+target_var = T.ivector('targets')	<-- ivector, dmatrix 
+
+
+------------------------------------------------------------------
+ Layers
+------------------------------------------------------------------
+Example:
+	Input layer
+	   layer1 = {'layer': 'input',
+		          'input_var': input_var,
+		          'shape': shape <-- (num_sequences, 4, sequence_length, 1)
+		          }	
+
+	Convolution layer
+	   layer2 = {'layer': 'convolution', 
+		          'num_filters': 200, 
+		          'filter_size': (8, 1),  <-- (1st_dimension, 2nd_dimension)
+		          'pool_size': (4, 1)     <-- (1st_dimension, 2nd_dimension)
+		          'activation': 'prelu',
+		          'W': GlorotUniform(),     
+	  	          'b': None,
+		          'norm': 'batch'
+		          } 
+
+	Dense layer
+		layer3 = {'layer': 'dense', 
+		          'num_units': 200, 
+		          'activation': 'sigmoid',
+	  	          'W': GlorotUniform(),
+		          'b': Constant(0.05), 
+		          'dropout': .5
+		          }
+
+Possible parameters
+'layer':
+	- 'input'
+		- 'input_var': input_var
+		- 'shape': shape (tuple of dimensions)
+	- 'convolution'
+		- 'num_filters': 100
+		- 'filter_size': (4, 1)
+		- 'max_pool': (8, 1)
+		- 'activation': 'prelu'
+		- 'W': GlorotUniform()
+		- 'b': None
+		Optional
+			- 'stride': 1
+			- 'pad': 0
+			- 'untie_biases': False
+			- 'flip_filters': False
+	- 'dense'
+		- 'num_units': 10
+		- 'activation': 'sigmoid'
+		- 'W': GlorotUniform()
+		- 'b': GlorotUniform()
+
+'W', 'b':  
+	- None
+	- Constant(0.1)
+	- Normal(std=0.01, mean=0.0) 
+	- Uniform(range=0.01, std=None, mean=0.0)
+	- GlorotNormal(gain=1.0)
+	- GlorotUniform(gain=1.0)
+	- HeNormal(gain=1.0)
+	- HeUniform(gain=1.0)
+
+'activation': 
+	- 'prelu'
+	- 'relu'
+	- 'sigmoid'
+	- 'softmax'
+	- 'tanh'
+	- 'softplus'
+	- 'leakyrelu'
+		Optional
+		- 'leakiness': leakiness (default=0.01)
+
+Optional
+	Batch Normalization
+	'norm': 'batch'  
+
+	Dropout
+	'dropout': rate
+
+
+------------------------------------------------------------------
+ Optimization parameters
+------------------------------------------------------------------
+Example:
+	optimization = {"objective": "binary",
+	            "optimizer": "nesterov_momentum", 
+	            "learning_rate": 0.1,
+	            "momentum": 0.9, 
+	            "weight_norm": 5,
+	            "l1": 1e-7,
+	            "l2": 1e-8}
+
+'objective': 
+	- 'categorical'
+    	- 'binary'
+    	- 'mse'
+
+'optimizer':
+	- 'sgd'
+		- 'learning_rate': learning_rate (default=0.1)
+	- 'nesterov_momentum'
+		- 'learning_rate': learning_rate (default=0.1) 
+		- 'momentum': momentum (default=0.9)
+    	- 'adagrad'
+        optional parameters
+	    	- 'learning_rate': 0.01 (default=1.0)
+	    	- 'epsilon': 1e-06
+	- 'adadelta'
+	optional parameters
+		- 'learning_rate': (default=1.0)
+		- 'rho': 0.95
+	    	- 'epsilon': 1e-06
+    	- 'rmsprop'
+    	optional parameters
+            - 'learning_rate': 0.001 (default=1.0)
+            - 'rho': rho (default=0.9) 
+            - 'epsilon': epsilon (default=1e-06)
+    	- 'adam'
+    	optional parameters
+            - 'learning_rate': learning_rate (default=1.0)
+            - 'beta1': beta1 (default=0.9) 
+            - 'beta2': beta2 (default=0.999) 
+            - 'epsilon': epsilon (default=1e-06)
+
+Optional
+	Gradient clipping
+	"weight_norm": max_gradient_norm (default=0, recommend=10)
+
+	Regularization
+	'l1': rate
+	'l2': rate
+
+
+
+
+
+
+
+
+
+
+
+
+

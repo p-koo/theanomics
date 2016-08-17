@@ -1,28 +1,13 @@
 import sys
-import theano.tensor as T
-import numpy as np
-from lasagne import layers, init, nonlinearities, utils
-
-from lasagne.layers import InputLayer, DenseLayer, NonlinearityLayer
-from lasagne.layers import DropoutLayer, ParametricRectifierLayer
-from lasagne.layers import ConcatLayer, LocalResponseNormalization2DLayer
-from lasagne.layers.dnn import Conv2DDNNLayer as ConvLayer
-from lasagne.layers import MaxPool2DLayer as PoolLayer
-
-from lasagne.nonlinearities import softmax, sigmoid, rectify, linear
-from lasagne.nonlinearities import leaky_rectify, tanh, very_leaky_rectify
-
-from lasagne.init import Constant, Normal, Uniform, GlorotNormal
-from lasagne.init import GlorotUniform, HeNormal, HeUniform
-from build_network import build_network
-
-from six.moves import cPickle
 sys.path.append('..')
-
-
+import numpy as np
+from six.moves import cPickle
 import theano
 import theano.tensor as T
 from lasagne.layers.base import Layer
+from lasagne import layers, init, nonlinearities, utils
+from src.build_network import build_network
+
 
 class BatchNormLayer(Layer):
     def __init__(self, incoming, axes='auto', epsilon=1e-4, alpha=0.1,
@@ -220,7 +205,7 @@ def CMAP_model(shape, num_labels):
 # denoising autoencoder with dropout
 
 
-def CMAP_model(shape, num_labels):
+def model(shape, num_labels):
 
     target_var = T.dmatrix('targets')
     input_var = T.dmatrix('inputs')

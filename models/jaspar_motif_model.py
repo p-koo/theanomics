@@ -15,6 +15,7 @@ from lasagne.init import GlorotUniform, HeNormal, HeUniform
 
 from six.moves import cPickle
 sys.path.append('..')
+from src.build_network import build_network
 #from src import load_JASPAR_motifs
 
 # Examples:
@@ -59,7 +60,7 @@ def load_JASPAR_motifs(jaspar_path, MAX):
 
 	return motifs
 
-def jaspar_motif_model(shape, num_labels):
+def model(shape, num_labels):
 
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
