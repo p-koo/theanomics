@@ -22,7 +22,7 @@ def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500,
 
 		# test current model with cross-validation data and store results
 		if 'valid' in data.keys():
-			valid_loss = nntrainer.test_model(valid, batch_size, "valid")
+			valid_loss = nntrainer.test_model(data['valid'], batch_size, "valid")
 		
 		# save model
 		nntrainer.save_model()
@@ -61,7 +61,7 @@ def train_variable_learning_rate(nntrainer, train, valid, learning_rate_schedule
 
 		# test current model with cross-validation data and store results
 		if 'valid' in data.keys():
-			valid_loss = nntrainer.test_model(valid, batch_size, "valid")
+			valid_loss = nntrainer.test_model(data['valid'], batch_size, "valid")
 		
 		# save model
 		nntrainer.save_model()

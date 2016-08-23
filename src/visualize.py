@@ -163,7 +163,7 @@ def subplot_grid(nrows, ncols):
     return grid
 
 
-def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='./nt'):
+def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='nt'):
     """generate a sequence logo from a pwm"""
     
     def load_alphabet(filepath, rna):

@@ -6,10 +6,11 @@ from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 from lasagne import layers, nonlinearities, init
 from src.build_network import build_network
+import numpy as np
 
 def residual_block(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify):
 
-	
+	"""
 	# original residual unit
 	shape = layers.get_output_shape(net[last_layer])
 	num_filters = shape[1]
@@ -27,6 +28,7 @@ def residual_block(net, last_layer, name, filter_size, nonlinearity=nonlineariti
 	# combine input with residuals
 	net[name+'_residual'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid_norm']])
 	net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
+
 	"""
 	# new residual unit
 	shape = layers.get_output_shape(net[last_layer])
@@ -45,16 +47,16 @@ def residual_block(net, last_layer, name, filter_size, nonlinearity=nonlineariti
 
 	# combine input with residuals
 	net[name+'_resid'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid']])
-	"""
+	
 	return net
 
 
-def residual_bottleneck(net, last_layer, name, num_filters, filter_size, nonlinearity=nonlinearities.rectify):
+def residual_bottleneck(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify):
 
 	# initial residual unit
 	shape = layers.get_output_shape(net[last_layer])
 	num_filters = shape[1]
-	reduced_filters = np.round(num_filters/4)
+	reduced_filters = np.round(num_filters/2)
 
 	# 1st residual layer
 	net[name] = layers.Conv2DLayer(net[last_layer], num_filters=reduced_filters, filter_size=(1,1), stride=(1, 1),  
@@ -84,49 +86,54 @@ def model(shape, num_labels):
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
 
-	# medium model
 	net = {}
 	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
-	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=128, filter_size=(11, 1), stride=(1, 1),    # 990
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=32, filter_size=(8, 1), stride=(1, 1),    # 993
+					 					W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
 	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv1_dropout1'] = layers.DropoutLayer(net['conv1_active'], p=0.1)
-	net = residual_block(net, 'conv1_dropout1', 'conv1_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 198
-	net['conv1_2_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.3)
+	net = residual_block(net, 'conv1_active', 'conv1_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 331
+	net['conv1_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.1)
 
-	net['conv2'] = layers.Conv2DLayer(net['conv1_2_dropout'], num_filters=256, filter_size=(9, 1), stride=(1, 1), # 190
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=64, filter_size=(8, 1), stride=(1, 1), # 324
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv2_norm'] = layers.BatchNormLayer(net['conv2'])
 	net['conv2_active'] = layers.NonlinearityLayer(net['conv2_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv2_dropout1'] = layers.DropoutLayer(net['conv2_active'], p=0.3)
-	net = residual_block(net, 'conv2_dropout1', 'conv2_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 38
-	net['conv2_2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.3)
+	net = residual_block(net, 'conv2_active', 'conv2_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 108
+	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.2)
 
-	net['conv3'] = layers.Conv2DLayer(net['conv2_2_dropout'], num_filters=512, filter_size=(9, 1), stride=(1, 1),  #30
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=128, filter_size=(7, 1), stride=(1, 1),  # 102
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv3_norm'] = layers.BatchNormLayer(net['conv3'])
 	net['conv3_active'] = layers.NonlinearityLayer(net['conv3_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv3_dropout1'] = layers.DropoutLayer(net['conv3_active'], p=0.3)
-	net = residual_block(net, 'conv3_dropout1', 'conv3_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 6
-	net['conv3_2_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.3)
+	net = residual_block(net, 'conv3_active', 'conv3_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 34
+	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.2)
 
-	net['conv4'] = layers.Conv2DLayer(net['conv3_2_dropout'], num_filters=1024, filter_size=(6, 1), stride=(1, 1), # 1
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=256, filter_size=(5, 1), stride=(1, 1), # 30
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv4_norm'] = layers.BatchNormLayer(net['conv4'])
 	net['conv4_active'] = layers.NonlinearityLayer(net['conv4_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv4_dropout1'] = layers.DropoutLayer(net['conv4_active'], p=0.3)
-	net = residual_block(net, 'conv4_dropout1', 'conv4_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
-	net['conv4_2_dropout'] = layers.DropoutLayer(net['conv4_2_resid'], p=0.1)
+	net = residual_block(net, 'conv4_active', 'conv4_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
+	net['conv4_pool'] = layers.MaxPool2DLayer(net['conv4_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 10
+	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_pool'], p=0.2)
 
-	net['conv5'] = layers.Conv2DLayer(net['conv4_2_dropout'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv5_active'] = layers.NonlinearityLayer(net['conv5'], nonlinearity=nonlinearities.sigmoid)
+	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=512, filter_size=(5, 1), stride=(1, 1), # 6
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
+	net['conv5_norm'] = layers.BatchNormLayer(net['conv5'])
+	net['conv5_active'] = layers.NonlinearityLayer(net['conv5_norm'], nonlinearity=nonlinearities.rectify)
+	net = residual_block(net, 'conv5_active', 'conv5_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
+	net['conv5_pool'] = layers.MaxPool2DLayer(net['conv5_2_resid'], pool_size=(6, 1), stride=(6, 1), ignore_border=False) # 1
 
-	net['output'] = layers.ReshapeLayer(net['conv5_active'], [-1, num_labels])
+	net['conv6'] = layers.Conv2DLayer(net['conv5_pool'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
+	net['conv6_active'] = layers.NonlinearityLayer(net['conv6'], nonlinearity=nonlinearities.sigmoid)
+
+	net['output'] = layers.ReshapeLayer(net['conv6_active'], [-1, num_labels])
+
+
 
 
 	# optimization parameters
@@ -144,127 +151,95 @@ def model(shape, num_labels):
 
 """
 
-
-	# medium model
 	net = {}
 	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
-	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=64, filter_size=(11, 1), stride=(1, 1),    # 990
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=32, filter_size=(8, 1), stride=(1, 1),    # 993
 					 W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
 	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 198
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 331
 	net['conv1_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.1)
 
-	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=256, filter_size=(9, 1), stride=(1, 1), # 190
+	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=64, filter_size=(8, 1), stride=(1, 1), # 324
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv2_norm'] = layers.BatchNormLayer(net['conv2'])
 	net['conv2_active'] = layers.NonlinearityLayer(net['conv2_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 38
-	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.3)
+	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 108
+	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.2)
 
-	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=512, filter_size=(9, 1), stride=(1, 1),  #30
+	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=128, filter_size=(7, 1), stride=(1, 1),  #102
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv3_norm'] = layers.BatchNormLayer(net['conv3'])
 	net['conv3_active'] = layers.NonlinearityLayer(net['conv3_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 6
-	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.3)
+	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 34
+	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.2)
 
-	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=1024, filter_size=(6, 1), stride=(1, 1), # 1
+	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=256, filter_size=(5, 1), stride=(1, 1), # 30
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv4_norm'] = layers.BatchNormLayer(net['conv4'])
 	net['conv4_active'] = layers.NonlinearityLayer(net['conv4_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_active'], p=0.3)
+	net['conv4_pool'] = layers.MaxPool2DLayer(net['conv4_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 10
+	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_pool'], p=0.2)
 
-	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
+	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=512, filter_size=(5, 1), stride=(1, 1), # 6
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv5_active'] = layers.NonlinearityLayer(net['conv5'], nonlinearity=nonlinearities.sigmoid)
+	net['conv5_norm'] = layers.BatchNormLayer(net['conv5'])
+	net['conv5_active'] = layers.NonlinearityLayer(net['conv5_norm'], nonlinearity=nonlinearities.rectify)
+	net['conv5_pool'] = layers.MaxPool2DLayer(net['conv5_active'], pool_size=(6, 1), stride=(6, 1), ignore_border=False) # 1
 
-	net['output'] = layers.ReshapeLayer(net['conv5_active'], [-1, num_labels])
+	net['conv6'] = layers.Conv2DLayer(net['conv5_pool'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
+						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv6_active'] = layers.NonlinearityLayer(net['conv6'], nonlinearity=nonlinearities.sigmoid)
+
+	net['output'] = layers.ReshapeLayer(net['conv6_active'], [-1, num_labels])
 
 
 
-# medium model
+	# residual model
 	net = {}
 	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
-	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=128, filter_size=(9, 1), stride=(1, 1),    # 990
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=32, filter_size=(8, 1), stride=(1, 1),    # 993
+					 					W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
 	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv1_active', 'conv1_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 198
-	net['conv1_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.1)
+	net = residual_bottleneck(net, 'conv1_active', 'conv1_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 331
 
-	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=256, filter_size=(5, 1), stride=(1, 1), # 190
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv2'] = layers.Conv2DLayer(net['conv1_pool'], num_filters=64, filter_size=(8, 1), stride=(1, 1), # 324
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv2_norm'] = layers.BatchNormLayer(net['conv2'])
 	net['conv2_active'] = layers.NonlinearityLayer(net['conv2_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv2_active', 'conv2_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 38
-	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.3)
+	net = residual_bottleneck(net, 'conv2_active', 'conv2_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 108
 
-	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=512, filter_size=(5, 1), stride=(1, 1),  #30
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv3'] = layers.Conv2DLayer(net['conv2_pool'], num_filters=128, filter_size=(7, 1), stride=(1, 1),  # 102
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv3_norm'] = layers.BatchNormLayer(net['conv3'])
 	net['conv3_active'] = layers.NonlinearityLayer(net['conv3_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv3_active', 'conv3_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_2_resid'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) # 6
-	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.3)
+	net = residual_bottleneck(net, 'conv3_active', 'conv3_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
+	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 34
 
-	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=1024, filter_size=(5, 1), stride=(1, 1), # 1
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv4'] = layers.Conv2DLayer(net['conv3_pool'], num_filters=256, filter_size=(5, 1), stride=(1, 1), # 30
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
 	net['conv4_norm'] = layers.BatchNormLayer(net['conv4'])
 	net['conv4_active'] = layers.NonlinearityLayer(net['conv4_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv4_active', 'conv4_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
-	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_2_resid'], p=0.3)
+	net = residual_bottleneck(net, 'conv4_active', 'conv4_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
+	net['conv4_pool'] = layers.MaxPool2DLayer(net['conv4_2_resid'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 10
 
-	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv5_active'] = layers.NonlinearityLayer(net['conv5'], nonlinearity=nonlinearities.sigmoid)
+	net['conv5'] = layers.Conv2DLayer(net['conv4_pool'], num_filters=512, filter_size=(5, 1), stride=(1, 1), # 6
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
+	net['conv5_norm'] = layers.BatchNormLayer(net['conv5'])
+	net['conv5_active'] = layers.NonlinearityLayer(net['conv5_norm'], nonlinearity=nonlinearities.rectify)
+	net = residual_bottleneck(net, 'conv5_active', 'conv5_2', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
+	net['conv5_pool'] = layers.MaxPool2DLayer(net['conv5_2_resid'], pool_size=(6, 1), stride=(6, 1), ignore_border=False) # 1
 
-	net['output'] = layers.ReshapeLayer(net['conv5_active'], [-1, num_labels])
+	net['conv6'] = layers.Conv2DLayer(net['conv5_pool'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
+						   				W=init.HeNormal(), b=None, nonlinearity=None, pad='valid')
+	net['conv6_active'] = layers.NonlinearityLayer(net['conv6'], nonlinearity=nonlinearities.sigmoid)
+
+	net['output'] = layers.ReshapeLayer(net['conv6_active'], [-1, num_labels])
 
 
-	# resnet
-	# 21/29 layer resnet
-	net = {}
-	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
-	
-	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=128, filter_size=(11, 1), stride=(1, 1),    
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='same')
-	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
-	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv1_active', 'conv2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv2_residual_active', 'conv3', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_residual_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) 
-
-	net['conv4'] = layers.Conv2DLayer(net['conv3_pool'], num_filters=256, filter_size=(9, 1), stride=(1, 1),    
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='same')
-	net['conv4_norm'] = layers.BatchNormLayer(net['conv4'])
-	net['conv4_active'] = layers.NonlinearityLayer(net['conv4_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv4_active', 'conv5', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv5_residual_active', 'conv6', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv6_pool'] = layers.MaxPool2DLayer(net['conv6_residual_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) 
-
-	net['conv7'] = layers.Conv2DLayer(net['conv6_pool'], num_filters=512, filter_size=(7, 1), stride=(1, 1),    
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='same')
-	net['conv7_norm'] = layers.BatchNormLayer(net['conv7'])
-	net['conv7_active'] = layers.NonlinearityLayer(net['conv7_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv7_active', 'conv8', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net = residual_bottleneck(net, 'conv8_residual_active', 'conv9', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
-	net['conv9_pool'] = layers.MaxPool2DLayer(net['conv9_residual_active'], pool_size=(5, 1), stride=(5, 1), ignore_border=False) 
-
-	net['conv10'] = layers.Conv2DLayer(net['conv9_pool'], num_filters=1024, filter_size=(8, 1), stride=(1, 1),  
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv10_norm'] = layers.BatchNormLayer(net['conv10'])
-	net['conv10_active'] = layers.NonlinearityLayer(net['conv10_norm'], nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv10_active', 'conv11', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
-	net = residual_block(net, 'conv11_residual_active', 'conv12', filter_size=(1,1), nonlinearity=nonlinearities.rectify)
-
-	net['conv13'] = layers.Conv2DLayer(net['conv12_residual_active'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv13_active'] = layers.NonlinearityLayer(net['conv13'], nonlinearity=nonlinearities.sigmoid)
-
-	net['output'] = layers.ReshapeLayer(net['conv13_active'], [-1, num_labels])
 
 
 	# very shallow

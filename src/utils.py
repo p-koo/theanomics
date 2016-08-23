@@ -169,102 +169,35 @@ def load_JASPAR_motifs(jaspar_path, MAX):
 	return motifs
 
 
+def meme_generate(nnmodel, layer1='conv1', output_file='meme.txt', prefix='filter'):
 
-def seq_logo(pwm, height=100, nt_width=20, norm=0, rna=1):
-    """generate a sequence logo from a pwm"""
+    W =  nnmodel.get_weights(layer1, normalize=1)
+
+    # background frequency        
+    nt_freqs = [1./4 for i in range(4)]
+
+    # open file for writing
+    f = open(output_file, 'w')
+
+    # print intro material
+    print >> f, 'MEME version 4'
+    print >> f, ''
+    print >> f, 'ALPHABET= ACGT'
+    print >> f, ''
+    print >> f, 'Background letter frequencies:'
+    print >> f, 'A %.4f C %.4f G %.4f T %.4f' % tuple(nt_freqs)
+    print >> f, ''
+
+    for j in range(len(W)):
+        pwm = np.array(W[j])
+
+        print >> f, 'MOTIF %s%d' % (prefix, j)
+        print >> f, 'letter-probability matrix: alength= 4 w= %d nsites= %d' % (pwm.shape[1], 7)
+        for i in range(pwm.shape[1]):
+            print >> f, '%.4f %.4f %.4f %.4f' % tuple(pwm[:,i])
+        print >> f, ''
+
+    f.close()
     
-    def load_alphabet(filepath='./nt', rna):
-        """load images of nucleotide alphabet """
-        df = pd.read_table(os.path.join(filepath, 'A.txt'), header=None);
-        A_img = df.as_matrix()
-        A_img = np.reshape(A_img, [72, 65, 3], order="F").astype(np.uint8)
-
-        df = pd.read_table(os.path.join(filepath, 'C.txt'), header=None);
-        C_img = df.as_matrix()
-        C_img = np.reshape(C_img, [76, 64, 3], order="F").astype(np.uint8)
-
-        df = pd.read_table(os.path.join(filepath, 'G.txt'), header=None);
-        G_img = df.as_matrix()
-        G_img = np.reshape(G_img, [76, 67, 3], order="F").astype(np.uint8)
-
-        if rna == 1:
-            df = pd.read_table(os.path.join(filepath, 'U.txt'), header=None);
-            T_img = df.as_matrix()
-            T_img = np.reshape(T_img, [74, 57, 3], order="F").astype(np.uint8)
-        else:
-	        df = pd.read_table(os.path.join(filepath, 'T.txt'), header=None);
-	        T_img = df.as_matrix()
-	        T_img = np.reshape(T_img, [72, 59, 3], order="F").astype(np.uint8)
-
-        return A_img, C_img, G_img, T_img
-
-
-    def get_nt_height(pwm, height, norm):
-        """get the heights of each nucleotide"""
-
-        def entropy(p):
-            """calculate entropy of each nucleotide"""
-            s = 0
-            for i in range(4):
-                if p[i] > 0:
-                    s -= p[i]*np.log2(p[i])
-            return s
-
-        num_nt, num_seq = pwm.shape
-        heights = np.zeros((num_nt,num_seq));
-        for i in range(num_seq):
-            if norm == 1:
-                total_height = height
-            else:
-                total_height = (np.log2(4) - entropy(pwm[:, i]))*height;
-            heights[:,i] = np.floor(pwm[:,i]*total_height);
-        return heights.astype(int)
-
-    
-    # get the alphabet images of each nucleotide
-    A_img, C_img, G_img, T_img = load_alphabet(filepath='./nt', rna=rna)
-    
-    # get the heights of each nucleotide
-    heights = get_nt_height(pwm, height, norm)
-    
-    # resize nucleotide images for each base of sequence and stack
-    num_nt, num_seq = pwm.shape
-    width = np.ceil(nt_width*num_seq).astype(int)
-    
-    total_height = np.sum(heights,axis=0)
-    max_height = np.max(total_height)
-    logo = np.ones((height*2, width, 3)).astype(int)*255;
-    for i in range(num_seq):
-        remaining_height = total_height[i];
-        offset = max_height-remaining_height
-        nt_height = np.sort(heights[:,i]);
-        index = np.argsort(heights[:,i])
-
-        for j in range(num_nt):
-            if nt_height[j] > 0:
-                # resized dimensions of image
-                resize = (nt_height[j], nt_width)
-                if index[j] == 0:
-                    nt_img = imresize(A_img, resize)
-                elif index[j] == 1:
-                    nt_img = imresize(C_img, resize)
-                elif index[j] == 2:
-                    nt_img = imresize(G_img, resize)
-                elif index[j] == 3:
-                    nt_img = imresize(T_img, resize)
-
-                # determine location of image
-                height_range = range(remaining_height-nt_height[j], remaining_height)
-                width_range = range(i*nt_width, i*nt_width+nt_width)
-
-                # 'annoying' way to broadcast resized nucleotide image
-                if height_range:
-                    for k in range(3):
-                        for m in range(len(width_range)):
-                            logo[height_range+offset, width_range[m],k] = nt_img[:,m,k];
-
-                remaining_height -= nt_height[j]
-
-    return logo.astype(np.uint8)
 
 

@@ -67,40 +67,40 @@ class NeuralNet:
 		print '----------------------------------------------------------------------------'
 
 
-    def get_feature_maps(self, layer, X, batch_size=500):
-        """get the feature maps of a given convolutional layer"""
+	def get_feature_maps(self, layer, X, batch_size=500):
+		"""get the feature maps of a given convolutional layer"""
 
-        # setup theano function to get feature map of a given layer
-        num_data = len(X)
-        feature_maps = theano.function([self.input_var], layers.get_output(self.network[layer], deterministic=True), allow_input_downcast=True)
-        map_shape = get_output_shape(self.network[layer])
+		# setup theano function to get feature map of a given layer
+		num_data = len(X)
+		feature_maps = theano.function([self.input_var], layers.get_output(self.network[layer], deterministic=True), allow_input_downcast=True)
+		map_shape = get_output_shape(self.network[layer])
 
-        # get feature maps in batches for speed (large batches may be too much memory for GPU)
-        num_batches = num_data // batch_size
-        shape = list(map_shape)
-        shape[0] = num_data
-        fmaps = np.empty(tuple(shape))
-        for i in range(num_batches):
-            index = range(i*batch_size, (i+1)*batch_size)    
-            fmaps[index] = feature_maps(X[index])
+		# get feature maps in batches for speed (large batches may be too much memory for GPU)
+		num_batches = num_data // batch_size
+		shape = list(map_shape)
+		shape[0] = num_data
+		fmaps = np.empty(tuple(shape))
+		for i in range(num_batches):
+			index = range(i*batch_size, (i+1)*batch_size)    
+			fmaps[index] = feature_maps(X[index])
 
-        # get the rest of the feature maps
-        excess = num_data-num_batches*batch_size
-        index = range(num_data-excess, num_data)    
-        fmaps[index] = feature_maps(X[index])
-        
-        return fmaps
+		# get the rest of the feature maps
+		excess = num_data-num_batches*batch_size
+		index = range(num_data-excess, num_data)    
+		fmaps[index] = feature_maps(X[index])
+		
+		return fmaps
 
-    def get_weights(self, layer, normalize=0):
-        W = np.squeeze(self.network[layer].W.get_value())
-        if normalize == 1:
-            for i in range(len(W)):
-            	MAX = np.max(W)
-			    W = W/MAX*4
-			    W = np.exp(W)
-			    norm = np.outer(np.ones(4), np.sum(W, axis=0))
-			    W = W/norm
-        return W
+	def get_weights(self, layer, normalize=0):
+		W = np.squeeze(self.network[layer].W.get_value())
+		if normalize == 1:
+			for i in range(len(W)):
+				MAX = np.max(W)
+				W = W/MAX*4
+				W = np.exp(W)
+				norm = np.outer(np.ones(4), np.sum(W, axis=0))
+				W = W/norm
+		return W
 
 
 #----------------------------------------------------------------------------------------------------
@@ -112,16 +112,16 @@ class NeuralTrainer:
 
 	def __init__(self, nnmodel, optimization, save='best', filepath='.'):
 		self.nnmodel = nnmodel
-		self.optimization = optimization	
+		self.optimization = optimization    
 		self.save = save
 		self.filepath = filepath
-		self.objective = optimization["objective"]	
+		self.objective = optimization["objective"]  
 		self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
 
 		# build model 
 		print "compiling model"
 		train_fun, test_fun = build_optimizer(nnmodel.network, nnmodel.input_var, nnmodel.target_var, 
-		                                      optimization, self.learning_rate)
+											  optimization, self.learning_rate)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
@@ -293,7 +293,7 @@ class MonitorPerformance():
 
 
 	def get_min_loss(self):
- 		min_loss = min(self.loss)
+		min_loss = min(self.loss)
 		min_index = np.argmin(self.loss)
 		return min_loss, min_index
 
