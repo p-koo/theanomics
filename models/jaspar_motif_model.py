@@ -15,8 +15,8 @@ from lasagne.init import GlorotUniform, HeNormal, HeUniform
 
 from six.moves import cPickle
 sys.path.append('..')
-from src.build_network import build_network
-#from src import load_JASPAR_motifs
+from build_network import build_network
+#from utils import load_JASPAR_motifs
 
 # Examples:
 #   net['conv1'] = ConvLayer(net['input'], num_filters=200, filter_size=(12, 1), stride=(1, 1),

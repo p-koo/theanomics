@@ -5,7 +5,7 @@ import theano.tensor as T
 from lasagne.init import Constant, Normal, Uniform, GlorotNormal
 from lasagne.init import GlorotUniform, HeNormal, HeUniform
 from lasagne import layers, nonlinearities, init
-from src.build_network import build_network
+from build_network import build_network
 
 def model(shape, num_labels):
 	input_var = T.tensor4('inputs')
