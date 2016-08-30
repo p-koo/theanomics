@@ -73,7 +73,7 @@ class NeuralNet:
 		# setup theano function to get feature map of a given layer
 		num_data = len(X)
 		feature_maps = theano.function([self.input_var], layers.get_output(self.network[layer], deterministic=True), allow_input_downcast=True)
-		map_shape = get_output_shape(self.network[layer])
+		map_shape = layers.get_output_shape(self.network[layer])
 
 		# get feature maps in batches for speed (large batches may be too much memory for GPU)
 		num_batches = num_data // batch_size

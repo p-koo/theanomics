@@ -4,7 +4,7 @@ import numpy as np
 sys.path.append('..')
 from src.neuralnetwork import NeuralNet, NeuralTrainer
 import src.train as fit 
-import load_data
+import src.load_data
 from models.test_motif_model import model
 
 np.random.seed(247) # for reproducibility

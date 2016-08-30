@@ -6,7 +6,7 @@ import matplotlib as mpl
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 from scipy.misc import imresize
-
+import pandas as pd
 from lasagne.layers import get_output, get_output_shape, get_all_params
 import theano.tensor as T
 import theano
