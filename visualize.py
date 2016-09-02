@@ -1,4 +1,6 @@
 #!/bin/python
+import os, sys
+import numpy as np
 import matplotlib.image as img
 import matplotlib.pyplot as plt
 from matplotlib import cm

@@ -10,6 +10,7 @@ import pandas as pd
 
 def make_directory(path, foldername, verbose=1):
 	"""make a directory"""
+	
 	if not os.path.isdir(path):
 		os.mkdir(path)
 		print "making directory: " + path
@@ -48,6 +49,7 @@ def one_hot_labels(label):
 		label_expand[i, label[i]] = 1
 	return label_expand
 
+
 def pearson_corr_metric(label, prediction):
 	num_labels = label.shape[1]
 	corr = []
@@ -56,6 +58,7 @@ def pearson_corr_metric(label, prediction):
 		corr.append(stats.spearmanr(label[:,i], prediction[:,i])[0])
 		
 	return corr
+
 
 def rsquare_metric(label, prediction):
 	num_labels = label.shape[1]
@@ -72,6 +75,7 @@ def rsquare_metric(label, prediction):
 		slope.append(m)
 	return rsquare, slope
 
+
 def accuracy_metrics(label, prediction):
 	num_labels = label.shape[1]
 	accuracy = np.zeros((num_labels))
@@ -79,6 +83,7 @@ def accuracy_metrics(label, prediction):
 		score = accuracy_score(label[:,i], np.round(prediction[:,i]))
 		accuracy[i] = score
 	return accuracy
+
 
 def roc_metrics(label, prediction):
 	num_labels = label.shape[1]
@@ -91,6 +96,7 @@ def roc_metrics(label, prediction):
 		roc.append((fpr, tpr))
 	return auc_roc, roc
 
+
 def pr_metrics(label, prediction):
 	num_labels = label.shape[1]
 	pr = []
@@ -101,6 +107,7 @@ def pr_metrics(label, prediction):
 		auc_pr[i] = score
 		pr.append((precision, recall))
 	return auc_pr, pr
+
 
 def calculate_metrics(label, prediction, objective):
 	"""calculate metrics for classification"""
@@ -167,6 +174,19 @@ def load_JASPAR_motifs(jaspar_path, MAX):
 	motifs = np.expand_dims(np.transpose(motifs, (0,2,1)), axis=3)
 
 	return motifs
+
+
+def normalize_pwm(pwm, method=2):
+	if method == 1:
+		pwm = pwm/np.max(np.abs(pwm))
+		pwm += .25
+		pwm[pwm<0] = 0
+	elif method == 2:
+		MAX = np.max(pwm)
+		pwm = pwm/MAX*4
+		pwm = np.exp(pwm)
+	norm = np.outer(np.ones(4), np.sum(pwm, axis=0))
+	return pwm/norm
 
 
 def meme_generate(nnmodel, layer1='conv1', output_file='meme.txt', prefix='filter'):

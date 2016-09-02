@@ -83,6 +83,8 @@ def simulation_hdf5(filepath, class_type='binary'):
 
 def Encode_TF(filepath, tf_index):
 	name = ['H1-hESC','HepG2', 'K562', 'combine', 'CTCF', 'all']
+	#name = ['HepG2', 'K562', 'GM12878', 'HeLa', 'H1-hESC', 'HepG2-low', 'K562-low', 'GM12878-low', 'HeLa-low']
+
 	dataset = h5py.File(filepath,'r')
 
 	print "loading training data"

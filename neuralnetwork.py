@@ -4,48 +4,59 @@ import numpy as np
 from six.moves import cPickle
 import theano
 import theano.tensor as T
-from lasagne import layers, objectives, updates, regularization
+from lasagne import layers, objectives, updates, regularization, nonlinearities
 from lasagne.regularization import apply_penalty, l1, l2
 from scipy import stats
-from utils import calculate_metrics, batch_generator
+from utils 
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
 #------------------------------------------------------------------------------------------
 
 class NeuralNet:
-	"""Class to build a neural network"""
+	"""Class to build a neural network and perform basic functions"""
 
 	def __init__(self, network, input_var, target_var):
 		self.network = network
 		self.input_var = input_var
 		self.target_var = target_var
+		self.saliency = network
+		self.saliency_fn = []
 
 
-	def get_model_parameters(self):
-		return layers.get_all_param_values(self.network['output'])
+	def get_model_parameters(self, layer='output'):
+		"""return all the parameters of the network"""
+
+		return layers.get_all_param_values(self.network[layer])
 
 
-	def set_model_parameters(self, all_param_values):
-		self.network['output'] = layers.set_all_param_values(self.network['output'], all_param_values)
+	def set_model_parameters(self, all_param_values, layer='output'):
+		"""initialize network with all_param_values"""
+		self.network[layer] = layers.set_all_param_values(self.network[layer], all_param_values)
 
 
-	def save_model_parameters(self, filepath):
+	def save_model_parameters(self, filepath, layer='output'):
+		"""save model parameters to a file"""
+
 		print "saving model parameters to: " + filepath
-		all_param_values = layers.get_all_param_values(self.network['output'])
+		all_param_values = self.get_model_parameters(layer)
 		with open(filepath, 'wb') as f:
 			cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
 	
 
-	def load_model_parameters(self, filepath):
+	def load_model_parameters(self, filepath, layer='output'):
+		"""load model parametes from a file"""
+
 		print "loading model parameters from: " + filepath
-		all_param_values = layers.get_all_param_values(self.network['output'])
+		all_param_values = get_model_parameters(layer)
 		with open(filepath, 'rb') as f:
 			all_param_values = cPickle.load(f)
-		self.set_model_parameters(all_param_values)
+		self.set_model_parameters(all_param_values, layer)
 
 
 	def inspect_layers(self):
+		"""print each layer type and parameters"""
+
 		all_layers = layers.get_all_layers(self.network['output'])
 		print '----------------------------------------------------------------------------'
 		print 'Network architecture:'
@@ -85,13 +96,15 @@ class NeuralNet:
 			fmaps[index] = feature_maps(X[index])
 
 		# get the rest of the feature maps
-		excess = num_data-num_batches*batch_size
-		index = range(num_data-excess, num_data)    
+		index = range(num_batches*batch_size, num_data)    
 		fmaps[index] = feature_maps(X[index])
 		
 		return fmaps
 
+
 	def get_weights(self, layer, normalize=0):
+		"""get the weights of a given layer"""
+
 		W = np.squeeze(self.network[layer].W.get_value())
 		if normalize == 1:
 			for i in range(len(W)):
@@ -101,6 +114,55 @@ class NeuralNet:
 				norm = np.outer(np.ones(4), np.sum(W, axis=0))
 				W = W/norm
 		return W
+
+
+	def compile_saliency_reconstruction(self, saliency_layer):
+		"""compile a saliency function to perform guided back-propagation through
+		a network from the saliency_layer to the inputs"""
+
+		all_param_values = layers.get_all_param_values(self.network['output'])
+		self.saliency['output'] = layers.set_all_param_values(self.saliency['output'], all_param_values)
+
+		modified_relu = GuidedBackprop(nonlinearities.rectify) 
+		relu_layers = [layer for layer in layers.get_all_layers(self.saliency[saliency_layer])
+					   if getattr(layer, 'nonlinearity', None) is nonlinearities.rectify]
+		for layer in relu_layers:
+			layer.nonlinearity = modified_relu
+
+		output = layers.get_output(self.network[saliency_layer], deterministic=True)
+		max_output = T.max(output, axis=1)
+		saliency = theano.grad(max_output.sum(), wrt=self.input_var)
+
+		self.saliency_fn = theano.function([self.input_var], saliency)
+
+
+	def get_saliency_reconstruction(self, X, normalize=1, batch_size=500):
+		"""get the saliency map to the inputs"""
+
+		if not self.saliency_fn:
+			self.compile_saliency_reconstruction()
+
+		if X.shape[0] < batch_size:
+			saliency, max_class = self.saliency_fn(X)
+		else:
+			num_data = len(X)
+			num_batches = num_data // batch_size
+			saliency = []
+			for i in range(num_batches):
+				index = range(i*batch_size, (i+1)*batch_size)    
+				saliency.append(self.saliency_fn(X[index]))
+
+			index = range(num_batches*batch_size, num_data)     
+			saliency.append(self.saliency_fn(X[index]))
+			saliency = np.vstack(saliency)
+
+		if normalize:
+			saliency = np.array(saliency)
+			saliency = np.squeeze(saliency)
+			for i in range(len(saliency)):
+				saliency[i] = utils.normalize_pwm(saliency[i], method=2)
+
+		return saliency
 
 
 #----------------------------------------------------------------------------------------------------
@@ -142,7 +204,7 @@ class NeuralTrainer:
 
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
-		batches = batch_generator(train[0], train[1], batch_size, shuffle=True)
+		batches = utils.batch_generator(train[0], train[1], batch_size, shuffle=True)
 		value = 0
 		for i in range(num_batches):
 			X, y = next(batches)
@@ -155,6 +217,8 @@ class NeuralTrainer:
 
 
 	def train_metric(self, prediction, y):
+		"""metric to monitor performance during training"""
+
 		if self.objective == 'categorical':
 			return np.mean(np.argmax(prediction, axis=1) == y)
 		elif self.objective == 'binary':
@@ -162,9 +226,11 @@ class NeuralTrainer:
 
 
 	def test_step(self, test, batch_size, verbose=1):
+		"""perform a complete forward pass with a test function"""
+
 		performance = MonitorPerformance('test',self.objective, verbose)
 		num_batches = test[1].shape[0] // batch_size
-		batches = batch_generator(test[0], test[1], batch_size, shuffle=False)
+		batches = utils.batch_generator(test[0], test[1], batch_size, shuffle=False)
 		label = []
 		prediction = []
 		for epoch in range(num_batches):
@@ -180,6 +246,8 @@ class NeuralTrainer:
 
 
 	def test_model(self, test, batch_size, name):
+		"""perform a complete forward pass, store and print results"""
+
 		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
 		if name == "train":
 			self.train_monitor.update(test_loss, test_prediction, test_label)
@@ -194,6 +262,8 @@ class NeuralTrainer:
 	
 
 	def add_loss(self, loss, name):
+		"""add loss score to monitor class"""
+
 		if name == "train":
 			self.train_monitor.add_loss(loss)
 		elif name == "valid":
@@ -203,6 +273,8 @@ class NeuralTrainer:
 
 
 	def save_model(self):
+		"""save model parameters to file, according to filepath"""
+
 		if self.save == 'best':
 			min_loss, min_epoch = self.valid_monitor.get_min_loss()
 			if self.valid_monitor.loss[-1] <= min_loss:
@@ -212,15 +284,23 @@ class NeuralTrainer:
 			epoch = len(self.valid_monitor.loss)
 			filepath = self.filepath + '_' + str(epoch) +'.pickle'
 			self.nnmodel.save_model_parameters(filepath)
+			if self.valid_monitor.loss[-1] <= min_loss:
+				filepath = self.filepath + '_best.pickle'
+				self.nnmodel.save_model_parameters(filepath)
 
 
 	def save_all_metrics(self, filepath):
+		"""save all performance metrics"""
+
 		self.train_monitor.save_metrics(filepath)
 		self.test_monitor.save_metrics(filepath)
 		self.valid_monitor.save_metrics(filepath)
 
 
 	def early_stopping(self, current_loss, current_epoch, patience):
+		"""check if validation loss is not improving and stop after patience
+		runs out"""
+
 		min_loss, min_epoch = self.valid_monitor.get_min_loss()
 		status = True
 
@@ -231,12 +311,11 @@ class NeuralTrainer:
 		return status
 
 
-	def set_best_parameters(self):
-		if self.save == 'best':
+	def set_best_parameters(self, filepath=[]):
+		""" set the best parameters from file"""
+		
+		if not filepath:
 			filepath = self.filepath + '_best.pickle'
-		elif self.save == 'all':
-			min_loss, min_epoch = self.valid_monitor.get_min_loss()
-			filepath = self.filepath + '_' + str(epoch) +'.pickle'
 
 		f = open(filepath, 'rb')
 		all_param_values = cPickle.load(f)
@@ -279,7 +358,7 @@ class MonitorPerformance():
 
 
 	def update(self, loss, prediction, label):
-		metrics = calculate_metrics(label, prediction, self.objective)
+		metrics = utils.calculate_metrics(label, prediction, self.objective)
 		self.add_loss(loss)
 		self.add_metrics(metrics)
 
@@ -445,4 +524,35 @@ def build_updates(grad, params, update_params, learning_rate):
   
 	return update_op
 
+#---------------------------------------------------------------------------------------------------------
+# saliency and reconstruction
 
+
+
+class ModifiedBackprop(object):
+
+	def __init__(self, nonlinearity):
+		self.nonlinearity = nonlinearity
+		self.ops = {}  # memoizes an OpFromGraph instance per tensor type
+
+	def __call__(self, x):
+	   
+		cuda_var = theano.sandbox.cuda.as_cuda_ndarray_variable
+		x = cuda_var(x)
+		tensor_type = x.type
+		
+		if tensor_type not in self.ops:
+			input_var = tensor_type()
+			output_var = cuda_var(self.nonlinearity(input_var))
+			op = theano.OpFromGraph([input_var], [output_var])
+			op.grad = self.grad
+			self.ops[tensor_type] = op
+
+		return self.ops[tensor_type](x)
+
+class GuidedBackprop(ModifiedBackprop):
+	def grad(self, inputs, out_grads):
+		(inp,) = inputs
+		(grd,) = out_grads
+		dtype = inp.dtype
+		return (grd * (inp > 0).astype(dtype) * (grd > 0).astype(dtype),)
