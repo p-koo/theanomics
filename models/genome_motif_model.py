@@ -41,53 +41,36 @@ def model(shape, num_labels):
 
 	net = {}
 	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
-	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=32, filter_size=(8, 1), stride=(1, 1),    # 993
-					 W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=64, filter_size=(13, 1), stride=(1, 1),    # 1000
+					 W=GlorotUniform(), b=None, nonlinearity=None, pad='same')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
 	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 331
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_active'], pool_size=(25, 1), stride=(25, 1), ignore_border=False) # 40
 	net['conv1_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.1)
 
-	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=64, filter_size=(8, 1), stride=(1, 1), # 324
+	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=512, filter_size=(5, 1), stride=(1, 1), # 36 
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv2_norm'] = layers.BatchNormLayer(net['conv2'])
 	net['conv2_active'] = layers.NonlinearityLayer(net['conv2_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 108
-	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.2)
+	net['conv2_pool'] = layers.MaxPool2DLayer(net['conv2_active'], pool_size=(9, 1), stride=(9, 1), ignore_border=False) # 4
+	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_pool'], p=0.3)
 
-	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=128, filter_size=(7, 1), stride=(1, 1),  #102
+	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=1024, filter_size=(4, 1), stride=(1, 1),  #30
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv3_norm'] = layers.BatchNormLayer(net['conv3'])
 	net['conv3_active'] = layers.NonlinearityLayer(net['conv3_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv3_pool'] = layers.MaxPool2DLayer(net['conv3_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 34
-	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_pool'], p=0.2)
+	net['conv3_dropout'] = layers.DropoutLayer(net['conv3_active'], p=0.1)
 
-	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=256, filter_size=(5, 1), stride=(1, 1), # 30
+	net['conv4'] = layers.Conv2DLayer(net['conv3_dropout'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
 						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv4_norm'] = layers.BatchNormLayer(net['conv4'])
-	net['conv4_active'] = layers.NonlinearityLayer(net['conv4_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv4_pool'] = layers.MaxPool2DLayer(net['conv4_active'], pool_size=(3, 1), stride=(3, 1), ignore_border=False) # 10
-	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_pool'], p=0.2)
+	net['conv4_active'] = layers.NonlinearityLayer(net['conv4'], nonlinearity=nonlinearities.sigmoid)
 
-	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=512, filter_size=(5, 1), stride=(1, 1), # 6
-						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
-	net['conv5_norm'] = layers.BatchNormLayer(net['conv5'])
-	net['conv5_active'] = layers.NonlinearityLayer(net['conv5_norm'], nonlinearity=nonlinearities.rectify)
-	net['conv5_pool'] = layers.MaxPool2DLayer(net['conv5_active'], pool_size=(6, 1), stride=(6, 1), ignore_border=False) # 1
-
-	net['conv6'] = layers.Conv2DLayer(net['conv5_pool'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),
-						   W=GlorotUniform(), b=Constant(0.05), nonlinearity=None, pad='valid')
-	net['conv6_active'] = layers.NonlinearityLayer(net['conv6'], nonlinearity=nonlinearities.sigmoid)
-
-	net['output'] = layers.ReshapeLayer(net['conv6_active'], [-1, num_labels])
+	net['output'] = layers.ReshapeLayer(net['conv4_active'], [-1, num_labels])
 
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-					"learning_rate": 0.001,                 
-					"beta1": .9,
-					"beta2": .999,
-					"epsilon": 1e-6
+					"learning_rate": 0.001
 					#"l1": 1e-9,
 					#"l2": 1e-9
 					}

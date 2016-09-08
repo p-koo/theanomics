@@ -7,7 +7,7 @@ import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization, nonlinearities
 from lasagne.regularization import apply_penalty, l1, l2
 from scipy import stats
-from utils 
+import utils 
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
@@ -20,7 +20,7 @@ class NeuralNet:
 		self.network = network
 		self.input_var = input_var
 		self.target_var = target_var
-		self.saliency = network
+		self.saliency = T.copy(network)
 		self.saliency_fn = []
 
 
@@ -32,7 +32,7 @@ class NeuralNet:
 
 	def set_model_parameters(self, all_param_values, layer='output'):
 		"""initialize network with all_param_values"""
-		self.network[layer] = layers.set_all_param_values(self.network[layer], all_param_values)
+		layers.set_all_param_values(self.network[layer], all_param_values)
 
 
 	def save_model_parameters(self, filepath, layer='output'):
@@ -48,7 +48,7 @@ class NeuralNet:
 		"""load model parametes from a file"""
 
 		print "loading model parameters from: " + filepath
-		all_param_values = get_model_parameters(layer)
+		all_param_values = self.get_model_parameters(layer)
 		with open(filepath, 'rb') as f:
 			all_param_values = cPickle.load(f)
 		self.set_model_parameters(all_param_values, layer)
@@ -108,11 +108,11 @@ class NeuralNet:
 		W = np.squeeze(self.network[layer].W.get_value())
 		if normalize == 1:
 			for i in range(len(W)):
-				MAX = np.max(W)
-				W = W/MAX*4
-				W = np.exp(W)
-				norm = np.outer(np.ones(4), np.sum(W, axis=0))
-				W = W/norm
+				MAX = np.max(W[i])
+				W[i] = W[i]/MAX*4
+				W[i] = np.exp(W[i])
+				norm = np.outer(np.ones(4), np.sum(W[i], axis=0))
+				W[i] = W[i]/norm
 		return W
 
 
@@ -121,7 +121,7 @@ class NeuralNet:
 		a network from the saliency_layer to the inputs"""
 
 		all_param_values = layers.get_all_param_values(self.network['output'])
-		self.saliency['output'] = layers.set_all_param_values(self.saliency['output'], all_param_values)
+		layers.set_all_param_values(self.saliency['output'], all_param_values)
 
 		modified_relu = GuidedBackprop(nonlinearities.rectify) 
 		relu_layers = [layer for layer in layers.get_all_layers(self.saliency[saliency_layer])
@@ -143,7 +143,7 @@ class NeuralNet:
 			self.compile_saliency_reconstruction()
 
 		if X.shape[0] < batch_size:
-			saliency, max_class = self.saliency_fn(X)
+			saliency = self.saliency_fn(X)
 		else:
 			num_data = len(X)
 			num_batches = num_data // batch_size
@@ -223,6 +223,8 @@ class NeuralTrainer:
 			return np.mean(np.argmax(prediction, axis=1) == y)
 		elif self.objective == 'binary':
 			return np.mean(np.round(prediction) == y)
+		elif self.objective == 'squared_error':
+			return np.corrcoef(prediction[:,0],y[:,0])[0][1]
 
 
 	def test_step(self, test, batch_size, verbose=1):
@@ -233,7 +235,7 @@ class NeuralTrainer:
 		batches = utils.batch_generator(test[0], test[1], batch_size, shuffle=False)
 		label = []
 		prediction = []
-		for epoch in range(num_batches):
+		for batch in range(num_batches):
 			X, y = next(batches)
 			loss, prediction_minibatch = self.test_fun(X, y)
 			performance.add_loss(loss)
@@ -279,7 +281,7 @@ class NeuralTrainer:
 			min_loss, min_epoch = self.valid_monitor.get_min_loss()
 			if self.valid_monitor.loss[-1] <= min_loss:
 				filepath = self.filepath + '_best.pickle'
-				self.nnmodel.save_model_parameters(filepath)
+				self.nnmodel.save_model_parameters(filepath, 'output')
 		elif self.save == 'all':
 			epoch = len(self.valid_monitor.loss)
 			filepath = self.filepath + '_' + str(epoch) +'.pickle'
@@ -313,7 +315,7 @@ class NeuralTrainer:
 
 	def set_best_parameters(self, filepath=[]):
 		""" set the best parameters from file"""
-		
+
 		if not filepath:
 			filepath = self.filepath + '_best.pickle'
 
@@ -393,7 +395,7 @@ class MonitorPerformance():
 			elif (self.objective == 'squared_error'):
 				print("  " + name + " Pearson's R:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 				print("  " + name + " rsquare:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
-				print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
+				print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
 					
 
 	def progress_bar(self, epoch, num_batches, value, bar_length=30):
@@ -408,6 +410,8 @@ class MonitorPerformance():
 			elif (self.objective == 'squared_error'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
+		
+
 			sys.stdout.flush()
 
 
@@ -470,7 +474,7 @@ def build_loss(target_var, prediction, optimization):
 		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
 		# loss = objectives.binary_crossentropy(prediction[:,loss_index], target_var[:,loss_index])
 
-	elif optimization["objective"] == 'squared_error':
+	elif (optimization["objective"] == 'squared_error'):
 		loss = objectives.squared_error(prediction, target_var)
 
 	loss = objectives.aggregate(loss, mode='mean')

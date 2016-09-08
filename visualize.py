@@ -165,7 +165,7 @@ def subplot_grid(nrows, ncols):
     return grid
 
 
-def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='nt'):
+def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1):
     """generate a sequence logo from a pwm"""
     
     def load_alphabet(filepath, rna):
@@ -217,6 +217,8 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='nt'):
 
     
     # get the alphabet images of each nucleotide
+    package_directory = os.path.dirname(os.path.abspath(__file__))
+    filepath = os.path.join(package_directory,'nt')
     A_img, C_img, G_img, T_img = load_alphabet(filepath, rna)
     
     # get the heights of each nucleotide
@@ -242,9 +244,9 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='nt'):
                 if index[j] == 0:
                     nt_img = imresize(A_img, resize)
                 elif index[j] == 1:
-                    nt_img = imresize(C_img, resize)
-                elif index[j] == 2:
                     nt_img = imresize(G_img, resize)
+                elif index[j] == 2:
+                    nt_img = imresize(C_img, resize)
                 elif index[j] == 3:
                     nt_img = imresize(T_img, resize)
 
@@ -263,3 +265,35 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1, filepath='nt'):
     return logo.astype(np.uint8)
 
 
+def get_filter_logo_scan(X, nnmodel, layer='conv1', num_align=1000, window=10, flip_filters=1):
+    fmaps = nnmodel.get_feature_maps(layer, X)
+    fmaps = np.squeeze(fmaps)
+    X = np.squeeze(X)
+
+    W_scan = []
+    for filter_index in range(fmaps.shape[1]):
+        
+        # get filter scan
+        scan = fmaps[:,filter_index,:]
+
+        # get threshold
+        threshold = np.max(scan)/2
+
+        # find regions above threshold
+        x, y = np.where(scan > threshold)
+
+        # sort score 
+        index = np.argsort(scan[x,y])[-1:0:-1]
+        data_index = x[index[:num_align]].astype(int)
+        pos_index = y[index[:num_align]].astype(int)
+
+        seq = []
+        for i in range(num_align):
+            if (pos_index[i]-window >= 0) & (pos_index[i]+window <= scan.shape[1]):
+                seq.append(X[data_index[i],:,pos_index[i]-window:pos_index[i]+window])
+        seq = np.array(seq)
+        seq = np.mean(seq,axis=0)
+        if flip_filters:
+            seq = seq[:,-1:0:-1]
+        W_scan.append(seq)
+    return np.array(W_scan)
