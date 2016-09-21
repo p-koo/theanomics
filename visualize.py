@@ -265,7 +265,7 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, rna=1):
     return logo.astype(np.uint8)
 
 
-def get_filter_logo_scan(X, nnmodel, layer='conv1', num_align=1000, window=10, flip_filters=1):
+def get_filter_logo_scan(X, nnmodel, layer='conv1', window=10, flip_filters=1):
     fmaps = nnmodel.get_feature_maps(layer, X)
     fmaps = np.squeeze(fmaps)
     X = np.squeeze(X)
@@ -284,16 +284,20 @@ def get_filter_logo_scan(X, nnmodel, layer='conv1', num_align=1000, window=10, f
 
         # sort score 
         index = np.argsort(scan[x,y])[-1:0:-1]
-        data_index = x[index[:num_align]].astype(int)
-        pos_index = y[index[:num_align]].astype(int)
+        data_index = x[index].astype(int)
+        pos_index = y[index].astype(int)
 
-        seq = []
-        for i in range(num_align):
-            if (pos_index[i]-window >= 0) & (pos_index[i]+window <= scan.shape[1]):
-                seq.append(X[data_index[i],:,pos_index[i]-window:pos_index[i]+window])
-        seq = np.array(seq)
-        seq = np.mean(seq,axis=0)
-        if flip_filters:
-            seq = seq[:,-1:0:-1]
-        W_scan.append(seq)
+        if len(pos_index) > 100:
+            seq = []
+            for i in range(len(pos_index)):
+                if (pos_index[i]-window >= 0) & (pos_index[i]+window <= scan.shape[1]):
+                    seq.append(X[data_index[i],:,pos_index[i]-window:pos_index[i]+window])
+            if seq:
+                seq = np.array(seq)
+                seq = np.mean(seq,axis=0)
+                if flip_filters:
+                    seq = seq[:,::-1]
+                W_scan.append(seq)
+            else:
+                seq = np.ones((4,window*2+1))*.25
     return np.array(W_scan)

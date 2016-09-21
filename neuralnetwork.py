@@ -97,7 +97,8 @@ class NeuralNet:
 
 		# get the rest of the feature maps
 		index = range(num_batches*batch_size, num_data)    
-		fmaps[index] = feature_maps(X[index])
+		if index:
+			fmaps[index] = feature_maps(X[index])
 		
 		return fmaps
 
@@ -116,7 +117,7 @@ class NeuralNet:
 		return W
 
 
-	def compile_saliency_reconstruction(self, saliency_layer):
+	def compile_saliency_reconstruction(self, saliency_layer='output'):
 		"""compile a saliency function to perform guided back-propagation through
 		a network from the saliency_layer to the inputs"""
 
@@ -129,7 +130,7 @@ class NeuralNet:
 		for layer in relu_layers:
 			layer.nonlinearity = modified_relu
 
-		output = layers.get_output(self.network[saliency_layer], deterministic=True)
+		output = layers.get_output(self.saliency[saliency_layer], deterministic=True)
 		max_output = T.max(output, axis=1)
 		saliency = theano.grad(max_output.sum(), wrt=self.input_var)
 
