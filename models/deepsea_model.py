@@ -18,40 +18,40 @@ def model(shape, num_labels):
 			  'name': 'input'
 			  }
 	layer2 = {'layer': 'convolution', 
-			  'num_filters': 100,  #240
-			  'filter_size': (19, 1),
-			  'pool_size': (3, 1),
+			  'num_filters': 320,  #240
+			  'filter_size': (8, 1),
+			  'pool_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'pad': 'same',
+			  'pad': 'valid',
 			  'norm': 'batch', 
 			  'activation': 'relu',
 			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'convolution', 
-			  'num_filters': 200,  #480
-			  'filter_size': (9, 1),
+			  'num_filters': 480,  #480
+			  'filter_size': (8, 1),
 			  'pool_size': (4, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'pad': 'same',
+			  'pad': 'valid',
 			  'norm': 'batch', 
 			  'activation': 'relu',
 			  'name': 'conv2'
 			  }
 	layer4 = {'layer': 'convolution', 
-			  'num_filters': 300,  #960
-			  'filter_size': (7, 1),
+			  'num_filters': 960,  #960
+			  'filter_size': (8, 1),
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05),
-			  'pad': 'same',
-			  'pool_size': (3,1),
+			  'pad': 'valid',
+			  'pool_size': (4, 1),
 			  'norm': 'batch', 
 			  'activation': 'relu',
 			  'name': 'conv3'
 			  }
 	layer5 = {'layer': 'dense', 
-			  'num_units': 1000, 
+			  'num_units': 960, 
 			  'W': GlorotUniform(),
 			  'b': Constant(0.05), 
 			  'norm': 'batch', 
@@ -73,10 +73,7 @@ def model(shape, num_labels):
 	# optimization parameters
 	optimization = {"objective": "binary",
 					"optimizer": "adam",
-					"learning_rate": 0.001,                 
-					"beta1": .9,
-					"beta2": .999,
-					"epsilon": 1e-6,
+					"learning_rate": 0.001,      
 					"l1": 1e-7,
 					"l2": 1e-8, 
 					}

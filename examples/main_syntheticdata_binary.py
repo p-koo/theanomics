@@ -5,6 +5,7 @@ sys.path.append('..')
 from neuralnetwork import NeuralNet, NeuralTrainer
 import train as fit 
 import load_data
+#from models.deepsea_model import model
 from models.test_motif_model import model
 
 np.random.seed(247) # for reproducibility
@@ -12,9 +13,13 @@ np.random.seed(247) # for reproducibility
 #------------------------------------------------------------------------------
 # load data
 
-datapath = '/home/peter/Data/SequenceMotif'
-filepath = os.path.join(datapath, 'Unlocalized_N=100000_S=200_M=300_G=30_data.pickle')
+datapath = '/media/peter/storage/SequenceMotif'
+filepath = os.path.join(datapath, 'Unlocalized_N=100000_S=200_M=50_G=20_data.pickle')
 train, valid, test = load_data.simulation_pickle(filepath)
+
+#datapath = '/media/peter/storage/DeepSea'
+#train, valid, test = load_data.DeepSea_all(datapath)
+
 
 #-------------------------------------------------------------------------------------
 

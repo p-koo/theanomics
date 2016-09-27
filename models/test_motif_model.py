@@ -12,44 +12,26 @@ def model(shape, num_labels):
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
 	
-	# create model
-	input_layer = {'layer': 'input',
-				   'input_var': input_var,
-				   'shape': shape,
-				   'name': 'input'
-				   }
-	conv1 = {'layer': 'convolution', 
-			  'num_filters': 35, #30
-			  'filter_size': (9, 1), #189
-			  'W': GlorotUniform(),
-			  'b': None,
-			  'pad': 'same',
-			  'norm': 'batch', 
-			  'activation': 'relu',
-			  'pool_size': (20, 1), #20
-			  'name': 'conv1'
-			  }
-	conv2 = {'layer': 'convolution', 
-			  'num_filters': 20,  #16
-			  'filter_size': (10, 1),
-			  'W': GlorotUniform(),
-			  'b': None,
-			  'norm': 'batch', 
-			  'activation': 'linear',
-			  #'pool_size': (5, 1), #20
-			  'pad': 'valid',
-			  'name': 'conv2'
-			  }
-	output = {'layer': 'dense', 
-			  'num_units': num_labels, 
-			  'W': Constant(1.),
-			  'b': None,
-			  'activation': 'sigmoid', 
-			  'name': 'dense2'
-			  }
-			  
-	model_layers = [input_layer, conv1, conv2, output] 
-	net = build_network(model_layers)
+	net = {}
+	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
+	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=32, filter_size=(9, 1), stride=(1, 1),    # 196
+					 W=GlorotUniform(), b=None, nonlinearity=None, pad='same')
+	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
+	net['conv1_active'] = layers.NonlinearityLayer(net['conv1_norm'], nonlinearity=nonlinearities.rectify)
+	net['conv1_pool'] = layers.MaxPool2DLayer(net['conv1_active'], pool_size=(20, 1), stride=(20, 1), ignore_border=False) # 65
+	net['conv1_dropout'] = layers.DropoutLayer(net['conv1_pool'], p=0.1)
+
+	net['conv2'] = layers.Conv2DLayer(net['conv1_dropout'], num_filters=128, filter_size=(10, 1), stride=(1, 1), 
+						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv2_norm'] = layers.BatchNormLayer(net['conv2'])
+	net['conv2_active'] = layers.NonlinearityLayer(net['conv2_norm'], nonlinearity=nonlinearities.rectify)
+	net['conv2_dropout'] = layers.DropoutLayer(net['conv2_active'], p=0.1)
+
+	net['conv3'] = layers.Conv2DLayer(net['conv2_dropout'], num_filters=num_labels, filter_size=(1, 1), stride=(1, 1),  #26
+						   W=GlorotUniform(), b=None, nonlinearity=None, pad='valid')
+	net['conv3_active'] = layers.NonlinearityLayer(net['conv3'], nonlinearity=nonlinearities.sigmoid)
+	
+	net['output'] = layers.ReshapeLayer(net['conv3_active'], [-1, num_labels])
 
 
 
