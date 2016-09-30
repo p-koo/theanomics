@@ -218,7 +218,7 @@ def normalize_pwm(pwm, method=2):
 		MAX = np.max(pwm)
 		pwm = pwm/MAX*4
 		pwm = np.exp(pwm)
-	norm = np.outer(np.ones(4), np.sum(pwm, axis=0))
+	norm = np.outer(np.ones(pwm.shape[0]), np.sum(pwm, axis=0))
 	return pwm/norm
 
 
