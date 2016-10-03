@@ -251,10 +251,10 @@ def load_alphabet(filepath, alphabet):
 		df = pd.read_table(os.path.join(filepath, 'P.txt'), header=None);
 		P_img = df.as_matrix()
 		P_img =np. reshape(P_img, [64, 41, 3], order="F").astype(np.uint8)
-		df = pd.read_table(os.path.join(filepath, 'H.txt'), header=None);
-		T_img = df.as_matrix()
-		T_img = np.reshape(T_img, [64, 40, 3], order="F").astype(np.uint8)
-		chars = [P_img, T_img]
+		df = pd.read_table(os.path.join(filepath, 'U_2.txt'), header=None);
+		U_img = df.as_matrix()
+		U_img = np.reshape(U_img, [64, 40, 3], order="F").astype(np.uint8)
+		chars = [P_img, U_img]
 	return chars
 
 
