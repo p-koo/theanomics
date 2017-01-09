@@ -7,7 +7,18 @@ import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization, nonlinearities
 from lasagne.regularization import apply_penalty, l1, l2
 from scipy import stats
-import utils 
+import utils, metrics
+
+
+
+
+__all__ = [
+	"NeuralNet",
+	"NeuralTrainer",
+	"MonitorPerformance"
+]
+
+
 
 #------------------------------------------------------------------------------------------
 # Neural Network model class
@@ -351,9 +362,9 @@ class MonitorPerformance():
 		self.loss = np.append(self.loss, loss)
 
 
-	def add_metrics(self, metrics):
-		self.metric.append(metrics[0])
-		self.metric_std.append(metrics[1])
+	def add_metrics(self, scores):
+		self.metric.append(scores[0])
+		self.metric_std.append(scores[1])
 
 
 	def get_length(self):
@@ -361,9 +372,9 @@ class MonitorPerformance():
 
 
 	def update(self, loss, prediction, label):
-		metrics = utils.calculate_metrics(label, prediction, self.objective)
+		scores = metrics.calculate_metrics(label, prediction, self.objective)
 		self.add_loss(loss)
-		self.add_metrics(metrics)
+		self.add_metrics(scores)
 
 
 	def get_mean_loss(self):
@@ -384,11 +395,14 @@ class MonitorPerformance():
 		self.start_time = start_time
 
 
-	def print_results(self, name): 
-		if self.verbose == 1:
+	def print_results(self, name):
+		 if self.verbose == 1:
+		 	if name == 'test':
+		 		name += ' '
+
 			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]/1.))
 			mean_vals, error_vals = self.get_metric_values()
-			
+
 			if (self.objective == "binary") | (self.objective == "categorical"):
 				print("  " + name + " accuracy:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 				print("  " + name + " auc-roc:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
@@ -397,7 +411,7 @@ class MonitorPerformance():
 				print("  " + name + " Pearson's R:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 				print("  " + name + " rsquare:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
 				print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
-					
+
 
 	def progress_bar(self, epoch, num_batches, value, bar_length=30):
 		if self.verbose == 1:
@@ -411,7 +425,7 @@ class MonitorPerformance():
 			elif (self.objective == 'squared_error'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
-		
+
 
 			sys.stdout.flush()
 
@@ -426,6 +440,7 @@ class MonitorPerformance():
 		cPickle.dump(self.metric, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		cPickle.dump(self.metric_std, f, protocol=cPickle.HIGHEST_PROTOCOL)
 		f.close()
+
 
 
 

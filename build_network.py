@@ -1,6 +1,14 @@
 #/bin/python
 from lasagne import layers, nonlinearities, init
 
+
+
+__all__ = [
+    "build_network"
+]
+
+
+
 def build_network(model_layers, autoencode=0):
     """ build all layers in the model """
     

@@ -1,4 +1,5 @@
-#!/bin/python
+
+
 import os, sys
 import numpy as np
 import matplotlib.image as img
@@ -12,87 +13,22 @@ import pandas as pd
 from lasagne.layers import get_output, get_output_shape, get_all_params
 import theano.tensor as T
 import theano
-"""
-class NeuralVisualize():
-	def __init__(nnmodel, options=[]):
-		self.network = nnmodel.network
-		self.num_labels = nnmodel.num_labels
-		self.input_var = nnmodel.input_var
-		self.options = options
-"""
 
-def plot_filter_logos(W, figsize=(2,10), height=25, nt_width=10, norm=0, rna=0):
-	W =  np.squeeze(W)
-	num_filters = W.shape[0]
-	num_rows = int(np.ceil(np.sqrt(num_filters)))    
-	grid = mpl.gridspec.GridSpec(num_rows, num_rows)
-	grid.update(wspace=0.2, hspace=0.2, left=0.1, right=0.2, bottom=0.1, top=0.2) 
-	fig = plt.figure(figsize=figsize);
-	for i in range(num_filters):
-		logo = seq_logo(W[i], height=height, nt_width=nt_width, norm=norm, rna=rna)
-		plt.subplot(grid[i]);
-		plt.imshow(logo);
-		plt.axis('off');
-	return fig, plt
+sys.path.append('..')
+from utils import normalize_pwm
 
 
-def plot_mean_activations(fmaps, y, options):
-	"""plot mean activations for a given layer"""
-	def get_mean_activation(fmaps, y, batch_size=512):
-		fmaps = np.squeeze(fmaps)
-		mean_activation = []
-		std_activation = []
-		for i in range(max(y)+1):
-			index = np.where(y == i)[0]
-			mean_activation.append(np.mean(fmaps[index], axis=0))
-			std_activation.append(np.std(fmaps[index], axis=0))
-		return np.array(mean_activation), np.array(std_activation)
-
-	mean_activation, std_activation = get_mean_activation(fmaps, y)
-	num_labels = len(mean_activation)
-	nrows = np.ceil(np.sqrt(num_labels)).astype(int)
-	ncols = nrows
-
-	fig = plt.figure()
-	grid = subplot_grid(nrows, ncols)
-	for i in range(num_labels):
-		plt.subplot(grid[i])
-		plt.plot(mean_activation[i].T)
-		fig_options(plt, options)
-	return fig, plt
 
 
-def tSNE_plot(data, labels, figsize):
-	"""scatter plot of tSNE 2D projections, with a color corresponding to labels"""
-	num_labels = max(labels)+1
-	x = data[:,0]
-	y = data[:,1]
-	plt.figure(figsize = figsize)
-	plt.scatter(x, y, c=labels, cmap=plt.cm.get_cmap("jet", num_labels),  edgecolor = 'none')
-	plt.axis('off')
-	return plt
-
-
-def plot_loss(loss):
-	"""Plot trainig/validation/test loss during training"""
-
-	fig = plt.figure()
-	num_data_types = len(loss)
-	if num_data_types == 2:
-		plt.plot(loss[0], label='train loss', linewidth=2)
-		plt.plot(loss[1], label='valid loss', linewidth=2)
-	elif num_data_types == 3:
-		plt.plot(loss[0], label='train loss', linewidth=2)
-		plt.plot(loss[1], label='valid loss', linewidth=2)
-		plt.plot(loss[2], label='test loss', linewidth=2)
-
-	plt.xlabel('epoch', fontsize=22)
-	plt.ylabel('loss', fontsize=22)
-	plt.legend(loc='best', frameon=False, fontsize=18)
-	map(lambda xl: xl.set_fontsize(13), ax.get_xticklabels())
-	map(lambda yl: yl.set_fontsize(13), ax.get_yticklabels())
-	plt.tight_layout()
-	return fig, plt
+__all__ = [
+    "plot_filter_logos",
+    "plot_mean_activations",
+    "tSNE_plot",
+    "plot_loss",
+    "plot_roc_all",
+    "plot_pr_all",
+    
+]
 
 
 def plot_roc_all(final_roc):
@@ -118,11 +54,10 @@ def plot_pr_all(final_pr):
 	"""Plot PR curve for each class"""
 
 	fig = plt.figure()
-	for i in range(len(final_roc)):
+	for i in range(len(final_pr)):
 		plt.plot(final_pr[i][0],final_pr[i][1])
 	plt.xlabel('Recall', fontsize=22)
-	plt.ylabel('Product', fontsize=22)
-	plt.plot([0, 1],[0, 1],'k--')
+	plt.ylabel('Precision', fontsize=22)
 	ax = plt.gca()
 	ax.xaxis.label.set_fontsize(17)
 	ax.yaxis.label.set_fontsize(17)
@@ -133,40 +68,121 @@ def plot_pr_all(final_pr):
 	return fig, plt
 
 
-#------------------------------------------------------------------------------------------------
-# helper functions
-
-def fig_options(plt, options):
-	if 'figsize' in options:
-		fig = plt.gcf()
-		fig.set_size_inches(options['figsize'][0], options['figsize'][1], forward=True)
-	if 'ylim' in options:
-		plt.ylim(options['ylim'][0],options['ylim'][1])
-	if 'yticks' in options:
-		plt.yticks(options['yticks'])
-	if 'xticks' in options:
-		plt.xticks(options['xticks'])
-	if 'labelsize' in options:        
-		ax = plt.gca()
-		ax.tick_params(axis='x', labelsize=options['labelsize'])
-		ax.tick_params(axis='y', labelsize=options['labelsize'])
-	if 'axis' in options:
-		plt.axis(options['axis'])
-	if 'xlabel' in options:
-		plt.xlabel(options['xlabel'], fontsize=options['fontsize'])
-	if 'ylabel' in options:
-		plt.ylabel(options['ylabel'], fontsize=options['fontsize'])
-	if 'linewidth' in options:
-		plt.rc('axes', linewidth=options['linewidth'])
-
-
-def subplot_grid(nrows, ncols):
-	grid= mpl.gridspec.GridSpec(nrows, ncols)
+def plot_filter_logos(W, figsize=(2,10), height=25, nt_width=10, norm=0, alphabet='dna'):
+	W =  np.squeeze(W)
+	num_filters = W.shape[0]
+	num_rows = int(np.ceil(np.sqrt(num_filters)))    
+	grid = mpl.gridspec.GridSpec(num_rows, num_rows)
 	grid.update(wspace=0.2, hspace=0.2, left=0.1, right=0.2, bottom=0.1, top=0.2) 
-	return grid
+	fig = plt.figure(figsize=figsize);
+	for i in range(num_filters):
+		logo = seq_logo(W[i], height=height, nt_width=nt_width, norm=norm, alphabet=alphabet)
+		plt.subplot(grid[i]);
+		plot_seq_logo(logo, nt_width=nt_width, step_multiple=None)
+		if np.mod(i, num_rows) != 0:
+			plt.yticks([])
+	return fig, plt
 
 
-def get_filter_logo_scan(X, nnmodel, layer='conv1', window=10, flip_filters=1):
+def plot_neg_logo(W, height=50, nt_width=20, alphabet='dna', figsize=(50,20)):
+
+	num_rows = 2
+	grid = mpl.gridspec.GridSpec(num_rows, 1)
+	grid.update(wspace=0.2, hspace=0.0, left=0.1, right=0.2, bottom=0.1, top=0.2) 
+
+	fig = plt.figure(figsize=figsize);
+
+	plt.subplot(grid[0])
+	pwm = normalize_pwm(W, method=2)
+	pos_logo = seq_logo(pwm, height=height, nt_width=nt_width, norm=0, alphabet=alphabet)
+	plt.imshow(pos_logo, interpolation='none')
+	plt.xticks([])
+	plt.yticks([0, 100], ['2.0','0.0'])
+	ax = plt.gca()
+	ax.spines['right'].set_visible(False)
+	ax.spines['top'].set_visible(False)
+	ax.yaxis.set_ticks_position('none')
+	ax.xaxis.set_ticks_position('none')
+
+
+	plt.subplot(grid[1]);
+	pwm = normalize_pwm(-W, method=2)
+	neg_logo = seq_logo(pwm, height=height, nt_width=nt_width, norm=0, alphabet=alphabet)
+	plt.imshow(neg_logo[::-1,:,:], interpolation='none')
+	plt.xticks([])
+	plt.yticks([0, 100], ['0.0','2.0'])
+	ax = plt.gca()
+	ax.spines['right'].set_visible(False)
+	ax.spines['bottom'].set_visible(False)
+	ax.yaxis.set_ticks_position('none')
+	ax.xaxis.set_ticks_position('none')
+	return fig, plt
+
+
+def plot_seq_logo(logo, nt_width=None, step_multiple=None):
+	plt.imshow(logo, interpolation='none')
+	if nt_width:
+		num_nt = logo.shape[1]/nt_width
+		if step_multiple:
+			step_size = num_nt/(step_multiple+1)
+			nt_range = range(step_size, step_size*step_multiple)              
+			plt.xticks([step_size*nt_width, step_size*2*nt_width, step_size*3*nt_width, step_size*4*nt_width], 
+						[str(step_size), str(step_size*2), str(step_size*3), str(step_size*4)])
+		else:
+			plt.xticks([])
+		plt.yticks([0, 100], ['2.0','0.0'])
+		ax = plt.gca()
+		ax.spines['right'].set_visible(False)
+		ax.spines['top'].set_visible(False)
+		ax.yaxis.set_ticks_position('none')
+		ax.xaxis.set_ticks_position('none')
+	else:
+		plt.imshow(logo, interpolation='none')
+		plt.axis('off');
+	return plt
+
+
+def plot_neg_saliency(X, W, height=50, nt_width=20, alphabet='dna', figsize=(100,8)):
+
+	num_rows = 3
+	grid = mpl.gridspec.GridSpec(num_rows, 1)
+	grid.update(wspace=0.2, hspace=0.2, left=0.1, right=0.2, bottom=0.1, top=0.2) 
+
+	fig = plt.figure(figsize=figsize);
+
+	plt.subplot(grid[0])
+	pwm = normalize_pwm(W, method=2)
+	pos_logo = seq_logo(pwm, height=height, nt_width=nt_width, norm=0, alphabet=alphabet)
+	plt.imshow(pos_logo, interpolation='none')
+	plt.xticks([])
+	plt.yticks([0, 100], ['2.0','0.0'])
+	ax = plt.gca()
+	ax.spines['right'].set_visible(False)
+	ax.spines['top'].set_visible(False)
+	ax.yaxis.set_ticks_position('none')
+	ax.xaxis.set_ticks_position('none')
+
+	plt.subplot(grid[1])
+	logo = seq_logo(np.squeeze(X), height=height, nt_width=nt_width, norm=0, alphabet=alphabet)
+	plt.imshow(logo, interpolation='none');
+	plt.axis('off');
+
+	plt.subplot(grid[2]);
+	pwm = normalize_pwm(-W, method=2)
+	neg_logo = seq_logo(pwm, height=height, nt_width=nt_width, norm=0, alphabet=alphabet)
+	plt.imshow(neg_logo[::-1,:,:], interpolation='none')
+	plt.xticks([])
+	plt.yticks([0, 100], ['0.0','2.0'])
+	ax = plt.gca()
+	ax.spines['right'].set_visible(False)
+	ax.spines['bottom'].set_visible(False)
+	ax.yaxis.set_ticks_position('none')
+	ax.xaxis.set_ticks_position('none')
+	return fig, plt
+
+
+def get_filter_logo_scan(X, nnmodel, layer='conv1', window=10, flip_filters=0):
+	""" get the filter logo from the highest activations"""
 	fmaps = nnmodel.get_feature_maps(layer, X)
 	fmaps = np.squeeze(fmaps)
 	X = np.squeeze(X)
@@ -202,6 +218,41 @@ def get_filter_logo_scan(X, nnmodel, layer='conv1', window=10, flip_filters=1):
 			else:
 				seq = np.ones((4,window*2+1))*.25
 	return np.array(W_scan)
+
+
+
+
+#------------------------------------------------------------------------------------------------
+# helper functions
+
+def fig_options(plt, options):
+	if 'figsize' in options:
+		fig = plt.gcf()
+		fig.set_size_inches(options['figsize'][0], options['figsize'][1], forward=True)
+	if 'ylim' in options:
+		plt.ylim(options['ylim'][0],options['ylim'][1])
+	if 'yticks' in options:
+		plt.yticks(options['yticks'])
+	if 'xticks' in options:
+		plt.xticks(options['xticks'])
+	if 'labelsize' in options:        
+		ax = plt.gca()
+		ax.tick_params(axis='x', labelsize=options['labelsize'])
+		ax.tick_params(axis='y', labelsize=options['labelsize'])
+	if 'axis' in options:
+		plt.axis(options['axis'])
+	if 'xlabel' in options:
+		plt.xlabel(options['xlabel'], fontsize=options['fontsize'])
+	if 'ylabel' in options:
+		plt.ylabel(options['ylabel'], fontsize=options['fontsize'])
+	if 'linewidth' in options:
+		plt.rc('axes', linewidth=options['linewidth'])
+
+
+def subplot_grid(nrows, ncols):
+	grid= mpl.gridspec.GridSpec(nrows, ncols)
+	grid.update(wspace=0.2, hspace=0.2, left=0.1, right=0.2, bottom=0.1, top=0.2) 
+	return grid
 
 
 def load_alphabet(filepath, alphabet):
@@ -259,13 +310,10 @@ def load_alphabet(filepath, alphabet):
 
 
 def seq_logo(pwm, height=30, nt_width=10, norm=0, alphabet='dna'):
-	"""generate a sequence logo from a pwm"""
 	
 	def get_nt_height(pwm, height, norm):
-		"""get the heights of each nucleotide"""
-
+		
 		def entropy(p):
-			"""calculate entropy of each nucleotide"""
 			s = 0
 			for i in range(len(p)):
 				if p[i] > 0:
@@ -285,7 +333,7 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, alphabet='dna'):
 
 	# get the alphabet images of each nucleotide
 	package_directory = os.path.dirname(os.path.abspath(__file__))
-	filepath = os.path.join(package_directory,'nt')
+	filepath = os.path.join(package_directory,'chars')
 	chars = load_alphabet(filepath, alphabet)
 
 	# get the heights of each nucleotide
@@ -296,13 +344,13 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, alphabet='dna'):
 	width = np.ceil(nt_width*num_seq).astype(int)
 
 	max_height = height*2
-	total_height = np.sum(heights,axis=0) # np.minimum(np.sum(heights,axis=0), max_height)
+	#total_height = np.sum(heights,axis=0) # np.minimum(np.sum(heights,axis=0), max_height)
 	logo = np.ones((max_height, width, 3)).astype(int)*255;
 	for i in range(num_seq):
-		remaining_height = total_height[i];
-		offset = max_height-remaining_height
 		nt_height = np.sort(heights[:,i]);
 		index = np.argsort(heights[:,i])
+		remaining_height = np.sum(heights[:,i]);
+		offset = max_height-remaining_height
 
 		for j in range(num_nt):
 			if nt_height[j] > 0:
@@ -321,8 +369,8 @@ def seq_logo(pwm, height=30, nt_width=10, norm=0, alphabet='dna'):
 
 				remaining_height -= nt_height[j]
 
-				
 	return logo.astype(np.uint8)
+
 
 """
 

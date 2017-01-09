@@ -5,12 +5,13 @@ import numpy as np
 import scipy.io
 from six.moves import cPickle
 
-"""
-Data sets:
-	'load_DeepSea',
-	'load_MotifSimulation_categorical'
-	'load_MotifSimulation_categorical'
-"""
+
+__all__ = [
+    "simulation_pickle",
+    "simulation_hdf5"
+]
+
+
 
 def simulation_pickle(filepath, class_type='binary'):
 	# setup paths for file handling

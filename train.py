@@ -7,6 +7,16 @@ import numpy as np
 import theano
 
 
+__all__ = [
+	"train_minibatch",
+	"train_variable_learning_rate",
+	"test_model_all"
+]
+
+
+
+
+
 def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500, 
 			patience=10, verbose=1):
 	"""Train a model with cross-validation data and test data"""
