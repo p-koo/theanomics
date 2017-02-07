@@ -232,7 +232,7 @@ class NeuralTrainer:
 		"""metric to monitor performance during training"""
 
 		if self.objective == 'categorical':
-			return np.mean(np.argmax(prediction, axis=1) == y)
+			return np.mean(np.argmax(prediction, axis=1) == np.argmax(y, axis=1))
 		elif self.objective == 'binary':
 			return np.mean(np.round(prediction) == y)
 		elif self.objective == 'squared_error':
