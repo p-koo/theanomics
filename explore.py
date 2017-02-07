@@ -5,166 +5,232 @@ import optimize, utils, metrics
 
 
 __all__ = [
-    "NeuralOptimizer"
+	"NeuralOptimizer"
+]
+
+
+from __future__ import print_function 
+import os, sys, time
+import numpy as np
+from six.moves import cPickle
+
+import tensorflow as tf
+import optimize, utils, learn
+from build_network import *
+import neuralnetwork as nn
+
+
+__all__ = [
+	"NeuralOptimizer"
 ]
 
 
 class NeuralOptimizer:
-    """Class to build a neural network and perform basic functions"""
+	"""Class to build a neural network and perform basic functions"""
 
-    def __init__(self, model_layers, input_vars, target_vars, optimization, filepath):
-        self.model_layers = model_layers
-        self.input_vars = input_vars
-        self.target_vars = target_vars
-        self.optimization = optimization
-        self.filepath = filepath
-        self.optimal_loss = 1e20
-        self.hyperparameters = []
-        self.loss = []
+	def __init__(self, model_layers, placeholders, optimization, filepath):
+		self.model_layers = model_layers
+		self.placeholders = placeholders
+		self.optimization = optimization
+		
+		self.filepath = filepath
+		self.optimal_loss = 1e20
+		self.models = []
+		
+	def sample_network(self):
+		"""generate a network, sampling from the ranges provided by
+			hyperparameter search"""
+		new_model_layers = []
+		for current_layer in self.model_layers:
+			
+			layers = {}
+			for key in current_layer.keys():
+				if not isinstance(current_layer[key], dict):
+					layers[key] = current_layer[key]
+				else:
+					settings = current_layer[key]                        
+					start = settings['start']
+					MIN = settings['bounds'][0]
+					MAX = settings['bounds'][1]
+					if 'scale' not in settings.keys():
+						settings['scale'] = (MAX-MIN)/4
+					if 'multiples' not in settings.keys():
+						settings['multiples'] = 1
 
-    def sample_network(self):
-        """generate a network, sampling from the ranges provided by
-            hyperparameter search"""
-        model_layers = []
-        for layer in self.model_layers:
+					good_sample = False
+					while not good_sample:
+						sample = start + np.round(settings['scale'] * np.random.normal(0, 1))
+						if (sample >= MIN) & (sample <= MAX) & (np.mod(sample, settings['multiples']) == 0):
+							good_sample = True
+					layers[key] = int(sample)
+			new_model_layers.append(layers)
+		
+		return new_model_layers
+	
 
-            layers = {}
-            for key in layer.keys():
-                if isinstance(layer[key], str):
-                    layers[key] = layer[key]
-                else:
-                    if len(keys) == 2:
-                        bounds = layer[key]
-                        MIN = bounds[0]
-                        MAX = bounds[1]
-                        val = np.random.randint(MIN, MAX)
-                        layers[key] = val
-                    if len(keys) == 3:
-                        bounds = layer[key]
-                        MEAN = bounds[0]
-                        MIN = bounds[1]
-                        MAX = bounds[2]
-                        STD = (MAX-MIN)/6
-                        val = np.round(np.random.normal(MEAN, STD))
-                        val = np.min([val, MAX])
-                        val = np.max([val, MIN])
-                        layers[key] = val
-                    else:
-                        layers[key] = layer[key]
-            model_layers.append(layers)
-        self.architecture.append(model_layers)
+	def update_model_layers(self,new_model_layers):
+		"""update the means of the network hyperparameters"""
 
-        return model_layers
+		for i in range(len(self.model_layers)):
+			for key in self.model_layers[i].keys():
+				if isinstance(self.model_layers[i][key], dict):
+					 self.model_layers[i][key]['start'] = new_model_layers[i][key]  
+	
+	
+	def sample_optimization(self):
+		""" generate an optimization dictionary from the ranges in 
+		hyperparameter search"""
 
+		new_optimization = {}
+		for key in self.optimization.keys():
+			if not isinstance(self.optimization[key], dict):
+				new_optimization[key] = self.optimization[key]
+			else:
+				settings = self.optimization[key]    
+				start = settings['start']
+				MIN = settings['bounds'][0]
+				MAX = settings['bounds'][1]
+				if 'scale' not in settings.keys():
+					settings['scale'] = (MAX-MIN)/4
+				if 'transform' not in settings.keys():
+					settings['transform'] = 'linear'
 
-    def sample_optimization(self):
-        """ generate an optimization dictionary from the ranges in 
-        hyperparameter search"""
+				good_sample = False
+				while not good_sample:
+					sample = start + np.random.uniform(-settings['scale'], settings['scale'])
+					if (sample >= MIN) & (sample <= MAX):
+						good_sample = True
+				
+				if settings['transform'] == 'linear':
+					new_optimization[key] = sample
+				else:
+					new_optimization[key] = 10**sample
+		return new_optimization
+	
+	
+	def update_optimization(self, new_optimization):
+		"""update the means of the optimization hyperparameters"""
+		
+		for key in self.optimization.keys():
+			if isinstance(self.optimization[key], dict):
+				if 'transform' in self.optimization.keys():
+					if self.optimization[key]['transform'] == 'log':
+						self.optimization[key]['start'] = np.log10(new_optimization[key])   
+					else:
+						self.optimization[key]['start'] = new_optimization[key]
+				else:
+					self.optimization[key]['start'] = new_optimization[key]
+					
+				
+	def train_model(self, train, valid, new_model_layers, new_optimization,
+						num_epochs=10, batch_size=128, verbose=0, filepath='.'):
+		
+		# build neural network model
+		net = build_network(new_model_layers)
 
-        optimization = {}
-        for key in self.optimization.keys():
-            if not isinstance(self.optimization[key], str):
-                if len(keys) == 2:
-                    bounds = self.optimization[key]
-                    MIN = bounds[0]
-                    MAX = bounds[1]
-                    val = np.random.randint(MIN, MAX)
-                    optimization[key] = val
-                if len(keys) == 3:
-                    bounds = self.optimization[key]
-                    MEAN = bounds[0]
-                    MIN = bounds[1]
-                    MAX = bounds[2]
-                    STD = (MAX-MIN)/6
-                    val = np.round(np.random.normal(MEAN, STD))
-                    val = np.min([val, MAX])
-                    val = np.max([val, MIN])
-                    optimization[key] = val
-                else:
-                    optimization[key] = layer[key]
-        return optimization
+		# build neural network class
+		nnmodel = NeuralNet(net, self.input_var, self.target_var)
 
+		# compile neural trainer
+		nntrainer = NeuralTrainer(nnmodel, optimization, save='best', filepath=filepath)
 
-    def update_network(self, model_layers):
-        """update the means of the network hyperparameters"""
+		# train model
+		fit.train_minibatch(nntrainer, data={'train': train}, 
+									  batch_size=100, num_epochs=500, patience=10, verbose=1)
 
-        for i in range(len(self.model_layers)):
-            for key in self.model_layers[i].keys():
-                if not isinstance(self.model_layers[i][key], str):
-                    if len(keys) == 3:
-                        bounds = self.model_layers[i][key]
-                        bounds[0] = model_layers[i][key][0]
-                        self.model_layers[i][key] = bounds
+		# load best model --> lowest cross-validation error
+		nntrainer.set_best_parameters()
 
+		# test model
+		nntrainer.test_model(valid, batch_size, "valid")
+		
+		return loss
+	
+	
 
-    def update_optimization(self, optimization):
-        """update the means of the optimization hyperparameters"""
+	def optimize(self, train, valid, num_trials=30, num_epochs=10, batch_size=128, verbose=0):
 
-        current_optimization = self.optimization
-        for key in self.optimization.keys():
-            if not isinstance(self.optimization[key], str):
-                if len(keys) == 3:
-                    bounds = self.optimization[key]
-                    bounds[0] = optimization[key][0]
-                    self.optimization[key] = bounds
+		start_time = time.time()
+		print('Running baseline model')
+		model_layers, optimization = self.get_optimal_model()       
+		filepath = self.filepath + '_0'    
+		loss = self.train_model(train, valid, model_layers, optimization, num_epochs=num_epochs, 
+									 batch_size=batch_size, verbose=verbose, filepath=filepath)
+		print("    loss = " + str(loss))
+		print('    took ' + str(time.time() - start_time) + ' seconds')
+		self.optimal_loss = loss
 
+		for trial_index in range(num_trials):
+			start_time = time.time()
+			print('trial ' + str(trial_index+1) + ' out of ' + str(num_trials))
 
-    def check_gradient_flow(self, X, batch_size=500):
-        """get the feature maps of a given convolutional layer"""
+			# sample network and optimization
+			new_model_layers = self.sample_network()
+			new_optimization = self.sample_optimization()
 
-        forward_pass = []
-        for layer in layers:
-            fmap = nnmodel.get_feature_maps(layer, X)
-            forward_pass.append(np.reshape(fmap,[-1,]))
+			# train over a set number of epochs to compare models
+			filepath = self.filepath + '_' + str(trial_index+1)    
+			loss = self.train_model(train, valid, new_model_layers, new_optimization, num_epochs=num_epochs, 
+										 batch_size=batch_size, verbose=verbose, filepath=filepath)
 
-        #backward_pass = []
-        #for layer in layers:
-
-        return forward_pass #, backward_pass
-
-
-    def explore(self, batch_size, num_epochs):
-
-        # generate new network
-        model_layers = self.sample_network()
-        net = build_network(model_layers)
-
-        # generate new optimization
-        optimization = self.sample_optimization()
-
-        # build network
-        nnmodel = nn.NeuralNet(net, self.input_vars)
-
-        # build trainer
-        nntrainer = nn.NeuralTrainer(nnmodel, target_vars, optimization, 
-                                    save='best', filepath=self.filepath)
-
-        # train network
-        
-        sess = tf.Session()
-        sess.run(tf.initialize_all_variables()) # initialize variables
-        learn.train_minibatch(sess, nntrainer, {'train':  [X_train, y_train]}, 
-                                batch_size=batch_size, num_epochs=num_epochs, 
-                                patience=[], verbose=0, shuffle=True)
-    
-        loss = nntrainer.train_monitor.get_loss()
-
-        return model_layers, optimization, loss
+			self.models.append([loss, new_model_layers, new_optimization])
+			print("    loss = " + str(loss))
+			print('    took ' + str(time.time() - start_time) + ' seconds')
+			if loss < self.optimal_loss:
+				print("    Improve loss found. Updating parameters")
+				self.optimal_loss = loss 
+				self.update_optimization(new_optimization)
+				self.update_model_layers(new_model_layers)
 
 
-    def optimize(self, num_trials, batch_size, num_epochs):
+	def get_optimal_model(self):
 
-        # sample different hyperparameter settings
-        for i in range(num_trials):
-            model_layers, optimization, loss = self.explore(batch_size, num_epochs)
-            if loss[-1] < self.optimal_loss:
-                print "lower loss found. Updating parameters"
-                self.optimal_loss = loss[-1]
-                self.update_network(model_layers)
-                self.update_optimization(optimization)
-            self.hyperparameters.append({'model': model_layers, 
-                                         'optimization': optimization,
-                                         'loss': loss})
+		model_layers = []
+		for current_layer in self.model_layers:
+			layers = {}
+			for key in current_layer.keys():
+				if not isinstance(current_layer[key], dict):
+					layers[key] = current_layer[key]
+				else:
+					layers[key] = current_layer[key]['start']                        
+			model_layers.append(layers)
+		
+		optimization = {}
+		for key in self.optimization.keys():
+			if not isinstance(self.optimization[key], dict):
+				optimization[key] = self.optimization[key]
+			else:
+				if 'transform' in self.optimization[key].keys():
+					if self.optimization[key]['transform'] == 'log':
+						optimization[key] = 10**self.optimization[key]['start']
+					else:
+						optimization[key] = self.optimization[key]['start']
+				else:
+					optimization[key] = self.optimization[key]['start']
+		return model_layers, optimization
 
 
+	def print_optimal_model(self):
+		
+		model_layers, optimization = self.get_optimal_model()
+		for layer in model_layers:
+			for key in layer.keys():
+				if isinstance(layer[key], str):
+					print(key + ': ' + layer[key])
+				elif isinstance(layer[key], (int, float)):
+					print(key + ': ' + str(layer[key]))
+				else:
+					print(key + ": ")
+					print(layer[key])
 
+		for key in optimization.keys():
+			if isinstance(optimization[key], str):
+				print(key + ': ' + optimization[key])
+			elif isinstance(optimization[key], (int, float)):
+				print(key + ': ' + str(optimization[key]))
+			else:
+				print(key + ": ")
+				print(optimization[key])
+
+
+				
