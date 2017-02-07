@@ -56,11 +56,16 @@ class NeuralOptimizer:
 						settings['scale'] = (MAX-MIN)/4
 					if 'multiples' not in settings.keys():
 						settings['multiples'] = 1
+					if ('offset' in settings.keys()) & (settings['multiples'] == 1):
+						offset = settings['offset']
+					else:
+						offset = 0
 
 					good_sample = False
 					while not good_sample:
 						sample = start + np.round(settings['scale'] * np.random.normal(0, 1))
-						if (sample >= MIN) & (sample <= MAX) & (np.mod(sample, settings['multiples']) == 0):
+
+						if (sample >= MIN) & (sample <= MAX) & (np.mod(sample, settings['multiples']) == offset):
 							good_sample = True
 					layers[key] = int(sample)
 			new_model_layers.append(layers)
@@ -113,7 +118,7 @@ class NeuralOptimizer:
 		
 		for key in self.optimization.keys():
 			if isinstance(self.optimization[key], dict):
-				if 'transform' in self.optimization.keys():
+				if 'transform' in self.optimization[key].keys():
 					if self.optimization[key]['transform'] == 'log':
 						self.optimization[key]['start'] = np.log10(new_optimization[key])   
 					else:
@@ -121,7 +126,8 @@ class NeuralOptimizer:
 				else:
 					self.optimization[key]['start'] = new_optimization[key]
 					
-				
+					
+	
 	def train_model(self, train, valid, new_model_layers, new_optimization,
 						num_epochs=10, batch_size=128, verbose=0, filepath='.'):
 		
@@ -146,27 +152,34 @@ class NeuralOptimizer:
 		
 		return loss
 	
-	
 
 	def optimize(self, train, valid, num_trials=30, num_epochs=10, batch_size=128, verbose=0):
 
 		start_time = time.time()
+		print('---------------------------------------------------------')
 		print('Running baseline model')
-		model_layers, optimization = self.get_optimal_model()       
+		model_layers, optimization = self.get_optimal_model()	
+		self.print_model(model_layers, optimization)
+		print('')
 		filepath = self.filepath + '_0'    
 		loss = self.train_model(train, valid, model_layers, optimization, num_epochs=num_epochs, 
 									 batch_size=batch_size, verbose=verbose, filepath=filepath)
+		self.optimal_loss = loss
 		print("    loss = " + str(loss))
 		print('    took ' + str(time.time() - start_time) + ' seconds')
-		self.optimal_loss = loss
+		print('')
 
 		for trial_index in range(num_trials):
 			start_time = time.time()
+			print('---------------------------------------------------------')
 			print('trial ' + str(trial_index+1) + ' out of ' + str(num_trials))
+			print('---------------------------------------------------------')
 
 			# sample network and optimization
 			new_model_layers = self.sample_network()
 			new_optimization = self.sample_optimization()
+			self.print_model(new_model_layers, new_optimization)
+			print('')
 
 			# train over a set number of epochs to compare models
 			filepath = self.filepath + '_' + str(trial_index+1)    
@@ -174,13 +187,16 @@ class NeuralOptimizer:
 										 batch_size=batch_size, verbose=verbose, filepath=filepath)
 
 			self.models.append([loss, new_model_layers, new_optimization])
-			print("    loss = " + str(loss))
-			print('    took ' + str(time.time() - start_time) + ' seconds')
+			print("Results:")
+			print("loss = " + str(loss))
+			print('took ' + str(time.time() - start_time) + ' seconds')
 			if loss < self.optimal_loss:
-				print("    Improve loss found. Updating parameters")
+				print("Lower loss found. Updating parameters")
 				self.optimal_loss = loss 
 				self.update_optimization(new_optimization)
 				self.update_model_layers(new_model_layers)
+			print('')
+		print('---------------------------------------------------------')
 
 
 	def get_optimal_model(self):
@@ -213,24 +229,24 @@ class NeuralOptimizer:
 	def print_optimal_model(self):
 		
 		model_layers, optimization = self.get_optimal_model()
+		self.print_model(model_layers, optimization)
+
+
+	def print_model(self, model_layers, optimization):
+		print('')
+		print('Model layers:')
 		for layer in model_layers:
 			for key in layer.keys():
 				if isinstance(layer[key], str):
-					print(key + ': ' + layer[key])
+					if key == 'name':
+						print(key + ': ' + layer[key])
 				elif isinstance(layer[key], (int, float)):
 					print(key + ': ' + str(layer[key]))
-				else:
-					print(key + ": ")
-					print(layer[key])
 
+		print('')
+		print('Optimization:')
 		for key in optimization.keys():
-			if isinstance(optimization[key], str):
-				print(key + ': ' + optimization[key])
-			elif isinstance(optimization[key], (int, float)):
+			if isinstance(optimization[key], (int, float)):
 				print(key + ': ' + str(optimization[key]))
-			else:
-				print(key + ": ")
-				print(optimization[key])
 
 
-				
