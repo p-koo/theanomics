@@ -207,7 +207,7 @@ class NeuralTrainer:
 		self.learning_rate.set_value(new_learning_rate) 
 		
 
-	def train_step(self,  train, batch_size, verbose=1):        
+	def train_step(self,  train, batch_size, verbose=1, shuffle=True):        
 		"""Train a mini-batch --> single epoch"""
 
 		# set timer for epoch run
@@ -216,7 +216,7 @@ class NeuralTrainer:
 
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
-		batches = utils.batch_generator(train[0], train[1], batch_size, shuffle=True)
+		batches = utils.batch_generator(train[0], train[1], batch_size, shuffle=shuffle)
 		value = 0
 		for i in range(num_batches):
 			X, y = next(batches)

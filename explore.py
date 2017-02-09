@@ -1,24 +1,9 @@
 import os, sys, time
-import tensorflow as tf
 import numpy as np
-import optimize, utils, metrics
 
-
-__all__ = [
-	"NeuralOptimizer"
-]
-
-
-from __future__ import print_function 
-import os, sys, time
-import numpy as np
-from six.moves import cPickle
-
-import tensorflow as tf
-import optimize, utils, learn
-from build_network import *
 import neuralnetwork as nn
-
+import train as learn
+from build_network import build_network
 
 __all__ = [
 	"NeuralOptimizer"
@@ -28,9 +13,10 @@ __all__ = [
 class NeuralOptimizer:
 	"""Class to build a neural network and perform basic functions"""
 
-	def __init__(self, model_layers, placeholders, optimization, filepath):
+	def __init__(self, model_layers, input_vars, target_vars, optimization, filepath):
 		self.model_layers = model_layers
-		self.placeholders = placeholders
+		self.input_vars = input_vars
+		self.target_vars = target_vars
 		self.optimization = optimization
 		
 		self.filepath = filepath
@@ -126,43 +112,47 @@ class NeuralOptimizer:
 				else:
 					self.optimization[key]['start'] = new_optimization[key]
 					
-					
+
+
+	def train_model(self, data, model_layers, optimization, num_epochs, batch_size, verbose, filepath):
+
+		# generate new network
+		model_layers = self.sample_network()
+		net = build_network(model_layers)
+
+		# generate new optimization
+		optimization = self.sample_optimization()
+
+		# build network
+		nnmodel = nn.NeuralNet(net, self.input_vars)
+
+		# build trainer
+		nntrainer = nn.NeuralTrainer(nnmodel, self.target_vars, optimization, 
+									save='best', filepath=filepath)
+
+		# train network
+		learn.train_minibatch(nntrainer, data['train'], 
+								batch_size=batch_size, num_epochs=num_epochs, 
+								patience=[], verbose=verbose, shuffle=True)
 	
-	def train_model(self, train, valid, new_model_layers, new_optimization,
-						num_epochs=10, batch_size=128, verbose=0, filepath='.'):
-		
-		# build neural network model
-		net = build_network(new_model_layers)
-
-		# build neural network class
-		nnmodel = NeuralNet(net, self.input_var, self.target_var)
-
-		# compile neural trainer
-		nntrainer = NeuralTrainer(nnmodel, optimization, save='best', filepath=filepath)
-
-		# train model
-		fit.train_minibatch(nntrainer, data={'train': train}, 
-									  batch_size=100, num_epochs=500, patience=10, verbose=1)
-
 		# load best model --> lowest cross-validation error
 		nntrainer.set_best_parameters()
 
 		# test model
-		nntrainer.test_model(valid, batch_size, "valid")
-		
-		return loss
-	
+		loss = nntrainer.test_model(data['valid'], batch_size, "test", verbose=verbose)
+		return model_layers, optimization, loss
 
-	def optimize(self, train, valid, num_trials=30, num_epochs=10, batch_size=128, verbose=0):
+
+	def optimize(self, data, num_trials=30, batch_size=128, num_epochs=20, verbose=0):
 
 		start_time = time.time()
 		print('---------------------------------------------------------')
 		print('Running baseline model')
-		model_layers, optimization = self.get_optimal_model()	
+		model_layers, optimization = self.get_optimal_model()   
 		self.print_model(model_layers, optimization)
 		print('')
 		filepath = self.filepath + '_0'    
-		loss = self.train_model(train, valid, model_layers, optimization, num_epochs=num_epochs, 
+		loss = self.train_model(data, model_layers, optimization, num_epochs=num_epochs, 
 									 batch_size=batch_size, verbose=verbose, filepath=filepath)
 		self.optimal_loss = loss
 		print("    loss = " + str(loss))
@@ -183,7 +173,7 @@ class NeuralOptimizer:
 
 			# train over a set number of epochs to compare models
 			filepath = self.filepath + '_' + str(trial_index+1)    
-			loss = self.train_model(train, valid, new_model_layers, new_optimization, num_epochs=num_epochs, 
+			loss = self.train_model(data, new_model_layers, new_optimization, num_epochs=num_epochs, 
 										 batch_size=batch_size, verbose=verbose, filepath=filepath)
 
 			self.models.append([loss, new_model_layers, new_optimization])
@@ -248,5 +238,3 @@ class NeuralOptimizer:
 		for key in optimization.keys():
 			if isinstance(optimization[key], (int, float)):
 				print(key + ': ' + str(optimization[key]))
-
-

@@ -18,7 +18,7 @@ __all__ = [
 
 
 def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500, 
-			patience=10, verbose=1):
+			patience=10, verbose=1, shuffle=True):
 	"""Train a model with cross-validation data and test data"""
 
 	# train model
@@ -27,7 +27,7 @@ def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500,
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training set
-		train_loss = nntrainer.train_step(data['train'], batch_size, verbose)
+		train_loss = nntrainer.train_step(data['train'], batch_size, verbose, shuffle)
 		nntrainer.add_loss(train_loss, 'train') 
 
 		# test current model with cross-validation data and store results
