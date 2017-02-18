@@ -8,6 +8,8 @@ def model(shape, num_labels):
 
 	input_var = T.tensor4('inputs')
 	target_var = T.dmatrix('targets')
+	placeholders = { 'inputs': input_var,
+					'targets': target_var }
 
 	# create model
 	layer1 = {'layer': 'input',
@@ -49,5 +51,5 @@ def model(shape, num_labels):
 					}
 
 
-	return network, input_var, target_var, optimization
+	return network, placeholders, optimization
 

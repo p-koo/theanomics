@@ -183,7 +183,7 @@ def plot_neg_saliency(X, W, height=50, nt_width=20, alphabet='dna', figsize=(100
 
 def get_filter_logo_scan(X, nnmodel, layer='conv1', window=10, flip_filters=0):
 	""" get the filter logo from the highest activations"""
-	fmaps = nnmodel.get_feature_maps(layer, X)
+	fmaps = nnmodel.get_activations(layer, X)
 	fmaps = np.squeeze(fmaps)
 	X = np.squeeze(X)
 

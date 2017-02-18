@@ -18,8 +18,6 @@ __all__ = [
 	"MonitorPerformance"
 ]
 
-
-
 #------------------------------------------------------------------------------------------
 # Neural Network model class
 #------------------------------------------------------------------------------------------
@@ -27,10 +25,9 @@ __all__ = [
 class NeuralNet:
 	"""Class to build a neural network and perform basic functions"""
 
-	def __init__(self, network, input_var, target_var):
+	def __init__(self, network, placeholders):
 		self.network = network
-		self.input_var = input_var
-		self.target_var = target_var
+		self.placeholders = placeholders
 		self.saliency = np.copy(network)
 		self.saliency_fn = []
 
@@ -43,6 +40,7 @@ class NeuralNet:
 
 	def set_model_parameters(self, all_param_values, layer='output'):
 		"""initialize network with all_param_values"""
+
 		layers.set_all_param_values(self.network[layer], all_param_values)
 
 
@@ -89,12 +87,12 @@ class NeuralNet:
 		print('----------------------------------------------------------------------------')
 
 
-	def get_feature_maps(self, layer, X, batch_size=500):
+	def get_activations(self, layer, X, batch_size=500):
 		"""get the feature maps of a given convolutional layer"""
 
 		# setup theano function to get feature map of a given layer
 		num_data = len(X)
-		feature_maps = theano.function([self.input_var], layers.get_output(self.network[layer], deterministic=True), allow_input_downcast=True)
+		feature_maps = theano.function([self.placeholders['inputs']], layers.get_output(self.network[layer], deterministic=True), allow_input_downcast=True)
 		map_shape = layers.get_output_shape(self.network[layer])
 
 		# get feature maps in batches for speed (large batches may be too much memory for GPU)
@@ -143,9 +141,9 @@ class NeuralNet:
 
 		output = layers.get_output(self.saliency[saliency_layer], deterministic=True)
 		max_output = T.max(output, axis=1)
-		saliency = theano.grad(max_output.sum(), wrt=self.input_var)
+		saliency = theano.grad(max_output.sum(), wrt=self.placeholders['inputs'])
 
-		self.saliency_fn = theano.function([self.input_var], saliency)
+		self.saliency_fn = theano.function([self.placeholders['inputs']], saliency)
 
 
 	def get_saliency_reconstruction(self, X, normalize=1, batch_size=500):
@@ -194,7 +192,7 @@ class NeuralTrainer:
 
 		# build model 
 		print("compiling model")
-		train_fun, test_fun = build_optimizer(nnmodel.network, nnmodel.input_var, nnmodel.target_var, 
+		train_fun, test_fun = build_optimizer(nnmodel.network, nnmodel.placeholders, 
 											  optimization, self.learning_rate)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
@@ -237,6 +235,8 @@ class NeuralTrainer:
 			return np.mean(np.round(prediction) == y)
 		elif self.objective == 'squared_error':
 			return np.corrcoef(prediction[:,0],y[:,0])[0][1]
+		elif self.objective == 'vae':
+			return np.mean((prediction - y)**2)
 
 
 	def test_step(self, test, batch_size, verbose=1):
@@ -449,49 +449,83 @@ class MonitorPerformance():
 # Neural network model building functions
 #------------------------------------------------------------------------------------------
 
-def build_optimizer(network, input_var, target_var, optimization, learning_rate):
+def build_optimizer(network, placeholders, optimization, learning_rate):
 
-	# build loss function
+	# build loss function 
 	prediction = layers.get_output(network['output'], deterministic=False)
-	loss = build_loss(target_var, prediction, optimization)
+
+	if optimization['objective'] == 'lower_bound':
+		loss, prediction = variational_lower_bound(network, placeholders['targets'], deterministic=False, binary=True)
+		params = get_all_params(net['X'], trainable=True)
+	else:
+		loss = build_loss(placeholders['targets'], prediction, optimization)
+		params = layers.get_all_params(network['output'], trainable=True)    
 
 	# regularize parameters
 	loss += regularization(network['output'], optimization)
 
 	# calculate and clip gradients
-	params = layers.get_all_params(network['output'], trainable=True)    
 	if "weight_norm" in optimization:
-		grad = calculate_gradient(loss, params, weight_norm=optimization["weight_norm"])
+		weight_norm = optimization['weight_norm']
 	else:
-		grad = calculate_gradient(loss, params)
+		weight_norm = None
+	grad = calculate_gradient(loss, params, weight_norm=weight_norm)
 	  
 	# setup parameter updates
 	update_op = build_updates(grad, params, optimization, learning_rate)
 
 	# test/validation set 
+	if optimization['objective'] == 'lower_bound':
+		loss, prediction = variational_lower_bound(network, placeholders['targets'], deterministic=False, binary=True)
+		test_loss = -log_likelihood - kl_divergence
+		params = get_all_params(net['X'], trainable=True)
+	else:
+		loss = build_loss(placeholders['targets'], prediction, optimization)
+		params = layers.get_all_params(network['output'], trainable=True)    
+
+
 	test_prediction = layers.get_output(network['output'], deterministic=True)
-	test_loss = build_loss(target_var, test_prediction, optimization)
+	test_loss = build_loss(placeholders['targets'], test_prediction, optimization)
 
 	# create theano function
-	train_fun = theano.function([input_var, target_var], [loss, prediction], updates=update_op)
-	test_fun = theano.function([input_var, target_var], [test_loss, test_prediction])
+	train_fun = theano.function(list(placeholders.values()), [loss, prediction], updates=update_op)
+	test_fun = theano.function(list(placeholders.values()), [test_loss, test_prediction])
 
 	return train_fun, test_fun
 
+def variational_lower_bound(network, targets, deterministic=False, binary=True):
 
-def build_loss(target_var, prediction, optimization):
+	z_mu = get_output(net['encode_mu'], deterministic=deterministic)
+	z_logsigma = get_output(net['encode_logsigma'], deterministic=deterministic)
+	kl_divergence = 0.5*T.sum(1 + 2*z_logsigma - T.sqr(z_mu) - T.exp(2*z_logsigma), axis=1)
+
+	if binary:
+		x_mu = get_output(net['X'], deterministic=deterministic)
+		x_mu = T.clip(x_mu, 1e-7, 1-1e-7)
+		log_likelihood = T.sum(targets*T.log(x_mu) + (1.0-targets)*T.log(1.0-x_mu), axis=1)
+	else:
+		x_mu = get_output(net['decode_mu'], deterministic=deterministic)
+		x_logsigma = get_output(net['decode_logsigma'], deterministic=deterministic)
+		log_likelihood = T.sum(-0.5*T.log(2*np.float32(np.pi))- x_logsigma - 0.5*T.sqr(targets-x_mu)/T.exp(2*x_logsigma),axis=1)
+
+	loss = -log_likelihood - kl_divergence
+	prediction = x_mu
+	return loss, prediction
+
+
+def build_loss(targets, prediction, optimization):
 	""" setup loss function with weight decay regularization """
 
 	if optimization["objective"] == 'categorical':
-		loss = objectives.categorical_crossentropy(prediction, target_var)
+		loss = objectives.categorical_crossentropy(prediction, targets)
 
 	elif optimization["objective"] == 'binary':
 		prediction = T.clip(prediction, 1e-7, 1-1e-7)
-		loss = -(target_var*T.log(prediction) + (1.0-target_var)*T.log(1.0-prediction))
-		# loss = objectives.binary_crossentropy(prediction[:,loss_index], target_var[:,loss_index])
+		loss = -(targets*T.log(prediction) + (1.0-targets)*T.log(1.0-prediction))
+		# loss = objectives.binary_crossentropy(prediction[:,loss_index], targets[:,loss_index])
 
 	elif (optimization["objective"] == 'squared_error'):
-		loss = objectives.squared_error(prediction, target_var)
+		loss = objectives.squared_error(prediction, targets)
 
 	loss = objectives.aggregate(loss, mode='mean')
 
@@ -562,9 +596,9 @@ class ModifiedBackprop(object):
 		tensor_type = x.type
 		
 		if tensor_type not in self.ops:
-			input_var = tensor_type()
-			output_var = cuda_var(self.nonlinearity(input_var))
-			op = theano.OpFromGraph([input_var], [output_var])
+			inputs = tensor_type()
+			output_var = cuda_var(self.nonlinearity(inputs))
+			op = theano.OpFromGraph([inputs], [output_var])
 			op.grad = self.grad
 			self.ops[tensor_type] = op
 

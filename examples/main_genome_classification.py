@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append('/Users/juliankimura/Desktop/deepomics')
 import deepomics.neuralnetwork as nn
 from deepomics import learn, utils
-from models import standard_model 
+from models import standard_model, all_conv_model
 
 
 sys.path.append('/Users/juliankimura/Desktop/data')
@@ -26,10 +26,10 @@ train, valid, test = load_data.simulation_pickle(file_path)
 # build network
 shape = (None, train[0].shape[1], train[0].shape[2], train[0].shape[3])
 num_labels = train[1].shape[1]
-network, input_var, target_var, optimization = standard_model.model(shape, num_labels)
+network, placeholders, optimization = standard_model.model(shape, num_labels)
 
 # build neural network class
-nnmodel = nn.NeuralNet(network, input_var, target_var)
+nnmodel = nn.NeuralNet(network, placeholders)
 nnmodel.inspect_layers()
 
 # set output file paths

@@ -1,0 +1,8 @@
+
+
+- write better batch generator
+- example vae
+- example explorer
+- modelchecker
+	- check activations of each layer
+	- 
