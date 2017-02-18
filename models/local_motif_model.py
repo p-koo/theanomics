@@ -1,4 +1,3 @@
-
 from lasagne import layers, nonlinearities, init
 import theano.tensor as T
 

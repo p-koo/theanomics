@@ -1,4 +1,5 @@
 #!/bin/python
+from __future__ import print_function
 import os, sys, time
 import numpy as np
 from six.moves import cPickle
@@ -7,9 +8,8 @@ import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization, nonlinearities
 from lasagne.regularization import apply_penalty, l1, l2
 from scipy import stats
-import utils, metrics
-
-
+from .utils import normalize_pwm, batch_generator
+from .metrics import calculate_metrics
 
 
 __all__ = [
@@ -31,7 +31,7 @@ class NeuralNet:
 		self.network = network
 		self.input_var = input_var
 		self.target_var = target_var
-		self.saliency = T.copy(network)
+		self.saliency = np.copy(network)
 		self.saliency_fn = []
 
 
@@ -46,21 +46,21 @@ class NeuralNet:
 		layers.set_all_param_values(self.network[layer], all_param_values)
 
 
-	def save_model_parameters(self, filepath, layer='output'):
+	def save_model_parameters(self, file_path, layer='output'):
 		"""save model parameters to a file"""
 
-		print "saving model parameters to: " + filepath
+		print("saving model parameters to: " + file_path)
 		all_param_values = self.get_model_parameters(layer)
-		with open(filepath, 'wb') as f:
+		with open(file_path, 'wb') as f:
 			cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
 	
 
-	def load_model_parameters(self, filepath, layer='output'):
+	def load_model_parameters(self, file_path, layer='output'):
 		"""load model parametes from a file"""
 
-		print "loading model parameters from: " + filepath
+		print("loading model parameters from: " + file_path)
 		all_param_values = self.get_model_parameters(layer)
-		with open(filepath, 'rb') as f:
+		with open(file_path, 'rb') as f:
 			all_param_values = cPickle.load(f)
 		self.set_model_parameters(all_param_values, layer)
 
@@ -69,24 +69,24 @@ class NeuralNet:
 		"""print each layer type and parameters"""
 
 		all_layers = layers.get_all_layers(self.network['output'])
-		print '----------------------------------------------------------------------------'
-		print 'Network architecture:'
-		print '----------------------------------------------------------------------------'
+		print('----------------------------------------------------------------------------')
+		print('Network architecture:')
+		print('----------------------------------------------------------------------------')
 		counter = 1
 		for layer in all_layers:
 			output_shape = layer.output_shape
 			params = layer.get_params()
 
-			print 'layer'+str(counter) + ': '
-			print str(layer)
-			print 'shape:' +  str(output_shape)
+			print('layer'+str(counter) + ': ')
+			print(str(layer))
+			print('shape:' +  str(output_shape))
 			if params:
 				all_params = ''
 				for param in params:
 					all_params += str(param) + ', '
-				print 'parameters: ' + str(all_params[0:-2])
+				print('parameters: ' + str(all_params[0:-2]))
 			counter += 1
-		print '----------------------------------------------------------------------------'
+		print('----------------------------------------------------------------------------')
 
 
 	def get_feature_maps(self, layer, X, batch_size=500):
@@ -172,7 +172,7 @@ class NeuralNet:
 			saliency = np.array(saliency)
 			saliency = np.squeeze(saliency)
 			for i in range(len(saliency)):
-				saliency[i] = utils.normalize_pwm(saliency[i], method=2)
+				saliency[i] = normalize_pwm(saliency[i], method=2)
 
 		return saliency
 
@@ -184,16 +184,16 @@ class NeuralNet:
 class NeuralTrainer:
 	"""Class to train a feed-forward neural network"""
 
-	def __init__(self, nnmodel, optimization, save='best', filepath='.'):
+	def __init__(self, nnmodel, optimization, save='best', file_path='.'):
 		self.nnmodel = nnmodel
 		self.optimization = optimization    
 		self.save = save
-		self.filepath = filepath
+		self.file_path = file_path
 		self.objective = optimization["objective"]  
 		self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
 
 		# build model 
-		print "compiling model"
+		print("compiling model")
 		train_fun, test_fun = build_optimizer(nnmodel.network, nnmodel.input_var, nnmodel.target_var, 
 											  optimization, self.learning_rate)
 		self.train_fun = train_fun
@@ -216,7 +216,7 @@ class NeuralTrainer:
 
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
-		batches = utils.batch_generator(train[0], train[1], batch_size, shuffle=shuffle)
+		batches = batch_generator(train[0], train[1], batch_size, shuffle=shuffle)
 		value = 0
 		for i in range(num_batches):
 			X, y = next(batches)
@@ -224,7 +224,7 @@ class NeuralTrainer:
 			value += self.train_metric(prediction, y)
 			performance.add_loss(loss)
 			performance.progress_bar(i+1., num_batches, value/(i+1))
-		print "" 
+		print("")
 		return performance.get_mean_loss()
 
 
@@ -244,7 +244,7 @@ class NeuralTrainer:
 
 		performance = MonitorPerformance('test',self.objective, verbose)
 		num_batches = test[1].shape[0] // batch_size
-		batches = utils.batch_generator(test[0], test[1], batch_size, shuffle=False)
+		batches = batch_generator(test[0], test[1], batch_size, shuffle=False)
 		label = []
 		prediction = []
 		for batch in range(num_batches):
@@ -259,7 +259,7 @@ class NeuralTrainer:
 		return performance.get_mean_loss(), prediction, label
 
 
-	def test_model(self, test, batch_size, name):
+	def test_model(self, test, name, batch_size=100):
 		"""perform a complete forward pass, store and print results"""
 
 		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
@@ -287,51 +287,51 @@ class NeuralTrainer:
 
 
 	def save_model(self):
-		"""save model parameters to file, according to filepath"""
+		"""save model parameters to file, according to file_path"""
 
 		if self.save == 'best':
-			min_loss, min_epoch = self.valid_monitor.get_min_loss()
+			min_loss, min_epoch, num_epochs = self.valid_monitor.get_min_loss()
 			if self.valid_monitor.loss[-1] <= min_loss:
-				filepath = self.filepath + '_best.pickle'
-				self.nnmodel.save_model_parameters(filepath, 'output')
+				file_path = self.file_path + '_best.pickle'
+				self.nnmodel.save_model_parameters(file_path, 'output')
 		elif self.save == 'all':
 			epoch = len(self.valid_monitor.loss)
-			filepath = self.filepath + '_' + str(epoch) +'.pickle'
-			self.nnmodel.save_model_parameters(filepath)
+			file_path = self.file_path + '_' + str(epoch) +'.pickle'
+			self.nnmodel.save_model_parameters(file_path)
 			if self.valid_monitor.loss[-1] <= min_loss:
-				filepath = self.filepath + '_best.pickle'
-				self.nnmodel.save_model_parameters(filepath)
+				file_path = self.file_path + '_best.pickle'
+				self.nnmodel.save_model_parameters(file_path)
 
 
-	def save_all_metrics(self, filepath):
+	def save_all_metrics(self, file_path):
 		"""save all performance metrics"""
 
-		self.train_monitor.save_metrics(filepath)
-		self.test_monitor.save_metrics(filepath)
-		self.valid_monitor.save_metrics(filepath)
+		self.train_monitor.save_metrics(file_path)
+		self.test_monitor.save_metrics(file_path)
+		self.valid_monitor.save_metrics(file_path)
 
 
-	def early_stopping(self, current_loss, current_epoch, patience):
+	def early_stopping(self, current_loss, patience):
 		"""check if validation loss is not improving and stop after patience
 		runs out"""
 
-		min_loss, min_epoch = self.valid_monitor.get_min_loss()
+		min_loss, min_epoch, num_epochs = self.valid_monitor.get_min_loss()
 		status = True
 
 		if min_loss < current_loss:
-			if patience - (current_epoch - min_epoch) < 0:
+			if patience - (num_epochs - min_epoch) < 0:
 				status = False
-				print "Patience ran out... Early stopping."
+				print("Patience ran out... Early stopping.")
 		return status
 
 
-	def set_best_parameters(self, filepath=[]):
+	def set_best_parameters(self, file_path=[]):
 		""" set the best parameters from file"""
 
-		if not filepath:
-			filepath = self.filepath + '_best.pickle'
+		if not file_path:
+			file_path = self.file_path + '_best.pickle'
 
-		f = open(filepath, 'rb')
+		f = open(file_path, 'rb')
 		all_param_values = cPickle.load(f)
 		f.close()
 		self.nnmodel.set_model_parameters(all_param_values)
@@ -372,7 +372,7 @@ class MonitorPerformance():
 
 
 	def update(self, loss, prediction, label):
-		scores = metrics.calculate_metrics(label, prediction, self.objective)
+		scores = calculate_metrics(label, prediction, self.objective)
 		self.add_loss(loss)
 		self.add_metrics(scores)
 
@@ -388,7 +388,7 @@ class MonitorPerformance():
 	def get_min_loss(self):
 		min_loss = min(self.loss)
 		min_index = np.argmin(self.loss)
-		return min_loss, min_index
+		return min_loss, min_index, len(self.loss)
 
 
 	def set_start_time(self, start_time):
@@ -396,9 +396,9 @@ class MonitorPerformance():
 
 
 	def print_results(self, name):
-		 if self.verbose == 1:
-		 	if name == 'test':
-		 		name += ' '
+		if self.verbose == 1:
+			if name == 'test':
+				name += ' '
 
 			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]/1.))
 			mean_vals, error_vals = self.get_metric_values()
@@ -430,9 +430,9 @@ class MonitorPerformance():
 			sys.stdout.flush()
 
 
-	def save_metrics(self, filepath):
-		savepath = filepath + "_" + self.name +"_performance.pickle"
-		print "saving metrics to " + savepath
+	def save_metrics(self, file_path):
+		savepath = file_path + "_" + self.name +"_performance.pickle"
+		print("saving metrics to " + savepath)
 
 		f = open(savepath, 'wb')
 		cPickle.dump(self.name, f, protocol=cPickle.HIGHEST_PROTOCOL)

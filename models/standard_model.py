@@ -1,6 +1,7 @@
 import sys
+
 sys.path.append('..')
-from deepomics.build_network import build_network
+from deepomics.build_network import build_network 
 import theano.tensor as T
 
 def model(shape, num_labels):
@@ -16,45 +17,27 @@ def model(shape, num_labels):
 			  }
 	layer2 = {'layer': 'convolution', 
 			  'num_filters': 30,  #240
-			  'filter_size': 8,
+			  'filter_size': (19, 1),
 			  'norm': 'batch',
 			  'activation': 'relu',
-			  'pool_size': 4,
+			  'pool_size': (20, 1),
 			  'dropout': 0.2,
 			  'name': 'conv1'
 			  }
-	layer3 = {'layer': 'convolution', 
-			  'num_filters': 64,  #480
-			  'filter_size': 8,
-			  'norm': 'batch',
-			  'activation': 'relu',
-			  'pool_size': 4,
-			  'dropout': 0.2,
-			  'name': 'conv2'
-			  }
-	layer4 = {'layer': 'convolution', 
-			  'num_filters': 256,  #960
-			  'filter_size': 8,
-			  'norm': 'batch',
-			  'activation': 'relu',
-			  'pool_size': 4,
-			  'dropout': 0.2,
-			  'name': 'conv3'
-			  }
-	layer5 = {'layer': 'dense', 
+	layer3 = {'layer': 'dense', 
 			  'num_units': 512,
 			  'norm': 'batch',
 			  'activation': 'relu',
-			  'dropout': 0.2,
+			  'dropout': 0.5,
 			  'name': 'dense1'
 			  }
-	layer6 = {'layer': 'dense', 
+	layer4 = {'layer': 'dense', 
 			  'num_units': num_labels,
 			  'activation': 'sigmoid',
 			  'name': 'dense1'
 			  }
 		  
-	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6]
+	model_layers = [layer1, layer2, layer3, layer4]
 	network = build_network(model_layers)
 
 	# optimization parameters

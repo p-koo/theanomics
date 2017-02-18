@@ -30,9 +30,28 @@ def build_layers(model_layers, network={}):
             lastlayer = name
         else:
 
-            if name == 'residual':
-                network = residual_block(network, lastlayer, model_layer['name'], 
-                                         model_layer['filter_size'], nonlinearity=nonlinearities.rectify)
+            if name == 'conv1d_residual':
+                if 'residual_dropout' in model_layer:
+                    dropout = model_layer['residual_dropout']
+                else:
+                    dropout = None
+                network = conv1d_residual(network, lastlayer, model_layer['name'], model_layer['filter_size'], 
+                                            nonlinearity=nonlinearities.rectify, dropout=dropout)
+            elif name == 'conv2d_residual':
+                if 'residual_dropout' in model_layer:
+                    dropout = model_layer['residual_dropout']
+                else:
+                    dropout = None
+                network = conv2d_residual(network, lastlayer, model_layer['name'], model_layer['filter_size'], 
+                                            nonlinearity=nonlinearities.rectify, dropout=dropout)
+            elif name == 'dense_residual':
+                if 'residual_dropout' in model_layer:
+                    dropout = model_layer['residual_dropout']
+                else:
+                    dropout = None
+                network = dense_residual(network, lastlayer, model_layer['name'], 
+                                            nonlinearity=nonlinearities.rectify, dropout=dropout)
+
 
             # add core layer
             newlayer = name #'# str(counter) + '_' + name + '_batch'
@@ -66,8 +85,7 @@ def build_layers(model_layers, network={}):
                 network[newlayer] = layers.LocalResponseNormalization2DLayer(network[lastlayer], 
                                                     alpha=.001/9.0, k=1., beta=0.75, n=5)
                 lastlayer = newlayer
-                
-        
+                    
         # add dropout layer
         if 'dropout' in model_layer:
             newlayer = name+'_dropout' # str(counter) + '_' + name+'_dropout'
@@ -92,39 +110,97 @@ def single_layer(model_layer, network_last):
 
     # dense layer
     elif model_layer['layer'] == 'dense':
+        if 'W' in model_layer:
+            W = model_layer['W']
+        else:
+            W = init.HeNormal()
         network = layers.DenseLayer(network_last, num_units=model_layer['num_units'],
-                                             W=model_layer['W'],
+                                             W=W,
                                              b=None, 
                                              nonlinearity=None)
 
-    # convolution layer
-    elif model_layer['layer'] == 'convolution':
+    # 1D convolution layer
+    elif model_layer['layer'] == 'conv1d':
+        if 'W' in model_layer:
+            W = model_layer['W']
+        else:
+            W = init.HeUniform()
+        if 'pad' in model_layer:
+            pad = model_layer['pad']
+        else:
+            pad = 'valid'
+        if 'stride' in model_layer:
+            stride = (model_layer['stride'], 1)
+        else:
+            stride = (1,1)
+        if isinstance(model_layer['filter_size'], (list, tuple)):
+            filter_size = model_layer['filter_size']
+        else:
+            filter_size = (model_layer['filter_size'], 1)
         network = layers.Conv2DLayer(network_last, num_filters=model_layer['num_filters'],
                                               filter_size=model_layer['filter_size'],
-                                              W=model_layer['W'],
+                                              W=W,
                                               b=None, 
-                                              pad=model_layer['pad'],
+                                              pad=pad,
+                                              stride=stride,
                                               nonlinearity=None)
-
+    # 2D convolution layer
+    elif (model_layer['layer'] == 'conv2d') | (model_layer['layer'] == 'convolution'):
+        if 'W' in model_layer:
+            W = model_layer['W']
+        else:
+            W = init.HeUniform()
+        if 'pad' in model_layer:
+            pad = model_layer['pad']
+        else:
+            pad = 'valid'
+        if 'stride' in model_layer:
+            if isinstance(model_layer['stride'], (list, tuple)):
+                stride = model_layer['stride']
+            else:
+                stride = (model_layer['stride'], model_layer['stride'])
+        else:
+            stride = (1,1)
+        if isinstance(model_layer['filter_size'], (list, tuple)):
+            filter_size = model_layer['filter_size']
+        else:
+            filter_size = (model_layer['filter_size'], model_layer['filter_size'])
+        network = layers.Conv2DLayer(network_last, num_filters=model_layer['num_filters'],
+                                              filter_size=model_layer['filter_size'],
+                                              W=W,
+                                              b=None, 
+                                              pad=pad,
+                                              stride=stride,
+                                              nonlinearity=None)
     elif model_layer['layer'] == 'lstm':
+        if 'grad_clipping' in model_layer:
+            grad_clipping = model_layer['grad_clipping']
+        else:
+            grad_clipping = 0
+
+        network = layers.LSTMLayer(network_last, num_units=model_layer['num_units'], 
+                                            grad_clipping=grad_clipping)
+
+    elif model_layer['layer'] == 'bi-lstm':
+        if 'grad_clipping' in model_layer:
+            grad_clipping = model_layer['grad_clipping']
+        else:
+            grad_clipping = 0
+
         l_forward = layers.LSTMLayer(network_last, num_units=model_layer['num_units'], 
-                                            grad_clipping=model_layer['grad_clipping'])
+                                            grad_clipping=grad_clipping)
         l_backward = layers.LSTMLayer(network_last, num_units=model_layer['num_units'], 
-                                            grad_clipping=model_layer['grad_clipping'], 
+                                            grad_clipping=grad_clipping, 
                                             backwards=True)
         network = layers.ConcatLayer([l_forward, l_backward])
 
 
     elif model_layer['layer'] == 'highway':
-        network = layers.DenseLayer(network_last, num_units=model_layer['num_units'],
-                                             W=model_layer['W'],
-                                             b=None, 
-                                             nonlinearity=None)
         for k in range(model_layer['num_layers']):
             network = highway_dense(network)
 
-
     return network
+
 
 
 def activation_layer(network_last, activation):
@@ -197,74 +273,102 @@ def highway_dense(incoming, W_dense=init.Orthogonal(), b_dense=init.Constant(0.0
 #--------------------------------------------------------------------------------------------------------------------
 # residual learning layer
 
-def residual_block(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify):
+def conv1D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify, dropout=None):
 
-    
+
+    if not isinstance(filter_size, (list, tuple)):
+        filter_size = (filter_size, 1)
+
     # original residual unit
     shape = layers.get_output_shape(net[last_layer])
     num_filters = shape[1]
 
     net[name+'_1resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
+                     W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
     net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
     net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
 
+    if dropout:
+        net[name+'_dropout'] = layers.DropoutLayer(net[name+'_1resid_active'], p=dropout)
+        last_layer = name+'_dropout'
+    else:
+        last_layer = name+'_1resid_active'
+
     # bottleneck residual layer
-    net[name+'_2resid'] = layers.Conv2DLayer(net[name+'_1resid_active'], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
+    net[name+'_2resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
+                     W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
     net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
 
     # combine input with residuals
     net[name+'_residual'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid_norm']])
     net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
-    """
-    # new residual unit
-    shape = layers.get_output_shape(net[last_layer])
-    num_filters = shape[1]
 
-    net[name+'_1resid_norm'] = layers.BatchNormLayer(net[last_layer])
-    net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
-    net[name+'_1resid'] = layers.Conv2DLayer(net[name+'_1resid_active'], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
-
-    # bottleneck residual layer
-    net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
-    net[name+'_2resid_active'] = layers.NonlinearityLayer(net[name+'_2resid_norm'], nonlinearity=nonlinearity)
-    net[name+'_2resid'] = layers.Conv2DLayer(net[name+'_2resid_active'], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
-
-    # combine input with residuals
-    net[name+'_resid'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid']])
-    """
     return net
 
 
-def residual_bottleneck(net, last_layer, name, num_filters, filter_size, nonlinearity=nonlinearities.rectify):
+
+def conv2D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify, dropout=None):
+
+    if not isinstance(filter_size, (list, tuple)):
+        filter_size = (filter_size, filter_size)
+
+    # original residual unit
+    shape = layers.get_output_shape(net[last_layer])
+    num_filters = shape[1]
+
+    net[name+'_1resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
+                     W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+    net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
+    net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
+
+    if dropout:
+        net[name+'_dropout'] = layers.DropoutLayer(net[name+'_1resid_active'], p=dropout)
+        last_layer = name+'_dropout'
+    else:
+        last_layer = name+'_1resid_active'
+        
+    # bottleneck residual layer
+    net[name+'_2resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
+                     W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+    net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
+
+    # combine input with residuals
+    net[name+'_residual'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid_norm']])
+    net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
+
+    return net
+
+
+
+def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify):
 
     # initial residual unit
     shape = layers.get_output_shape(net[last_layer])
+    num_units = shape[1]
+
+    # original residual unit
+    shape = layers.get_output_shape(net[last_layer])
     num_filters = shape[1]
-    reduced_filters = np.round(num_filters/4)
 
-    # 1st residual layer
-    net[name] = layers.Conv2DLayer(net[last_layer], num_filters=reduced_filters, filter_size=(1,1), stride=(1, 1),  
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
-    net[name+'_norm'] = layers.BatchNormLayer(net[name])
-    net[name+'_active'] = layers.NonlinearityLayer(net[name+'_norm'], nonlinearity=nonlinearities.rectify)
+    net[name+'_1resid'] = layers.DenseLayer(net[last_layer], num_units=num_units, 
+                                            W=init.HeUniform(), b=None, nonlinearity=None)
+    net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
+    net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
 
-    net[name+'_resid'] = layers.Conv2DLayer(net[name+'_active'], num_filters=reduced_filters, filter_size=filter_size, stride=(1, 1),   
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
-    net[name+'_resid_norm'] = layers.BatchNormLayer(net[name+'_resid'])
-    net[name+'_resid_active'] = layers.NonlinearityLayer(net[name+'_resid_norm'], nonlinearity=nonlinearity)
-
+    if dropout:
+        net[name+'_dropout'] = layers.DropoutLayer(net[name+'_1resid_active'], p=dropout)
+        last_layer = name+'_dropout'
+    else:
+        last_layer = name+'_1resid_active'
+        
     # bottleneck residual layer
-    net[name+'_bottle'] = layers.Conv2DLayer(net[name+'_resid_active'], num_filters=num_filters, filter_size=(1,1), stride=(1, 1),    
-                     W=init.HeNormal(), b=None, nonlinearity=None, pad='same')
-    net[name+'_bottle_norm'] = layers.BatchNormLayer(net[name+'_bottle'])
+    net[name+'_2resid'] = layers.DenseLayer(net[last_layer], num_units=num_units, 
+                                             W=init.HeUniform(), b=None, nonlinearity=None)
+    net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
 
     # combine input with residuals
-    net[name+'_residual'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_bottle_norm']])
-    net[name+'_residual_active'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
+    net[name+'_residual'] = layers.ElemwiseSumLayer([net[last_layer], net[name+'_2resid_norm']])
+    net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
 
     return net
 

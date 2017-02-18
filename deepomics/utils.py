@@ -1,4 +1,5 @@
 #!/bin/python
+from __future__ import print_function
 import os
 import sys
 import numpy as np
@@ -11,7 +12,6 @@ import pandas as pd
 
 __all__ = [
 	"batch_generator",
-	"one_hot_labels",
 	"make_directory",
 	"normalize_pwm",
 	"meme_generate",
@@ -25,12 +25,12 @@ def make_directory(path, foldername, verbose=1):
 
 	if not os.path.isdir(path):
 		os.mkdir(path)
-		print "making directory: " + path
+		print("making directory: " + path)
 
 	outdir = os.path.join(path, foldername)
 	if not os.path.isdir(outdir):
 		os.mkdir(outdir)
-		print "making directory: " + outdir
+		print("making directory: " + outdir)
 	return outdir
 
 

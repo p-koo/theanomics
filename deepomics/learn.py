@@ -1,7 +1,8 @@
 #!/bin/python
+from __future__ import print_function
 import sys
-from neuralnetwork import MonitorPerformance
-from utils import batch_generator
+from .neuralnetwork import MonitorPerformance
+from .utils import batch_generator
 from six.moves import cPickle
 import numpy as np
 import theano
@@ -12,9 +13,6 @@ __all__ = [
 	"train_variable_learning_rate",
 	"test_model_all"
 ]
-
-
-
 
 
 def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500, 
@@ -32,14 +30,14 @@ def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500,
 
 		# test current model with cross-validation data and store results
 		if 'valid' in data.keys():
-			valid_loss = nntrainer.test_model(data['valid'], batch_size, "valid")
+			valid_loss = nntrainer.test_model(data['valid'], "valid", batch_size)
 		
 		# save model
 		nntrainer.save_model()
 
 		# check for early stopping				
 		if patience:	
-			status = nntrainer.early_stopping(valid_loss, epoch, patience)
+			status = nntrainer.early_stopping(valid_loss, patience)
 			if not status:
 				break
 				
@@ -71,14 +69,14 @@ def train_variable_learning_rate(nntrainer, train, valid, learning_rate_schedule
 
 		# test current model with cross-validation data and store results
 		if 'valid' in data.keys():
-			valid_loss = nntrainer.test_model(data['valid'], batch_size, "valid")
+			valid_loss = nntrainer.test_model(data['valid'], "valid", batch_size)
 		
 		# save model
 		nntrainer.save_model()
 
 		# check for early stopping				
 		if patience:	
-			status = nntrainer.early_stopping(valid_loss, epoch, patience)
+			status = nntrainer.early_stopping(valid_loss, patience)
 			if not status:
 				break
 
@@ -90,7 +88,7 @@ def test_model_all(nntrainer, test, batch_size, num_train_epochs, filepath):
 	"""loops through training parameters for epochs min_index 
 	to max_index located in filepath and calculates metrics for 
 	test data """
-	print "Model performance for each training epoch on on test data set"
+	print("Model performance for each training epoch on on test data set")
 
 	for epoch in range(num_train_epochs):
 		sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_train_epochs))

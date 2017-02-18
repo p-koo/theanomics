@@ -1,4 +1,5 @@
-
+#!/bin/python
+from __future__ import print_function
 
 import os, sys
 import numpy as np
@@ -14,20 +15,19 @@ from lasagne.layers import get_output, get_output_shape, get_all_params
 import theano.tensor as T
 import theano
 
-sys.path.append('..')
-from utils import normalize_pwm
+from .utils import normalize_pwm
 
 
 
 
 __all__ = [
-    "plot_filter_logos",
-    "plot_mean_activations",
-    "tSNE_plot",
-    "plot_loss",
     "plot_roc_all",
     "plot_pr_all",
-    
+    "plot_filter_logos",
+    "plot_neg_logo",
+    "plot_seq_logo",
+    "plot_neg_saliency",
+    "get_filter_logo_scan"
 ]
 
 

@@ -1,9 +1,9 @@
 import os, sys, time
 import numpy as np
 
-import neuralnetwork as nn
-import train as learn
-from build_network import build_network
+from .neuralnetwork import NeuralNet, NeuralTrainer
+from .learn import train_minibatch
+from .build_network import build_network
 
 __all__ = [
 	"NeuralOptimizer"
@@ -124,14 +124,14 @@ class NeuralOptimizer:
 		optimization = self.sample_optimization()
 
 		# build network
-		nnmodel = nn.NeuralNet(net, self.input_vars)
+		nnmodel = NeuralNet(net, self.input_vars)
 
 		# build trainer
-		nntrainer = nn.NeuralTrainer(nnmodel, self.target_vars, optimization, 
+		nntrainer = NeuralTrainer(nnmodel, self.target_vars, optimization, 
 									save='best', filepath=filepath)
 
 		# train network
-		learn.train_minibatch(nntrainer, data['train'], 
+		train_minibatch(nntrainer, data['train'], 
 								batch_size=batch_size, num_epochs=num_epochs, 
 								patience=[], verbose=verbose, shuffle=True)
 	
