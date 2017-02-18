@@ -1,7 +1,5 @@
 
 
-- write better batch generator  --> link placeholders and data
-
 examples:
 	- explorer
 	- MNIST -  simple analysis + visualizations

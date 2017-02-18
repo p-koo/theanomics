@@ -1,4 +1,5 @@
 import sys
+import collections
 
 sys.path.append('..')
 from deepomics.build_network import build_network 
@@ -6,14 +7,13 @@ import theano.tensor as T
 
 def model(shape, num_labels):
 
-	input_var = T.tensor4('inputs')
-	target_var = T.dmatrix('targets')
-	placeholders = { 'inputs': input_var,
-					'targets': target_var }
+	placeholders = collections.OrderedDict()
+	placeholders['inputs'] = T.tensor4('inputs')
+	placeholders['targets'] = target_var = T.dmatrix('targets')
 
 	# create model
 	layer1 = {'layer': 'input',
-			  'input_var': input_var,
+			  'input_var': placeholders['inputs'],
 			  'shape': shape,
 			  'name': 'input'
 			  }

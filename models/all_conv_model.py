@@ -1,3 +1,4 @@
+import collections
 from lasagne import layers, nonlinearities, init
 import theano.tensor as T
 
@@ -29,14 +30,14 @@ def model(shape, num_labels):
 
 
 
-	input_var = T.tensor4('inputs')
-	target_var = T.dmatrix('targets')
-	placeholders = { 'inputs': input_var,
-					 'targets': target_var }
+	placeholders = collections.OrderedDict()
+	placeholders['inputs'] = T.tensor4('inputs')
+	placeholders['targets'] = target_var = T.dmatrix('targets')
+
 
 	
 	net = {}
-	net['input'] = layers.InputLayer(input_var=input_var, shape=shape)
+	net['input'] = layers.InputLayer(input_var=placeholders['inputs'], shape=shape)
 	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=30, filter_size=(9, 1), stride=(1, 1),    # 198
 	                                    W=init.HeUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])

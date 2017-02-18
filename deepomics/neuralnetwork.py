@@ -31,7 +31,6 @@ class NeuralNet:
 		self.saliency = np.copy(network)
 		self.saliency_fn = []
 
-
 	def get_model_parameters(self, layer='output'):
 		"""return all the parameters of the network"""
 
@@ -214,12 +213,12 @@ class NeuralTrainer:
 
 		# train on mini-batch with random shuffling
 		num_batches = train[0].shape[0] // batch_size
-		batches = batch_generator(train[0], train[1], batch_size, shuffle=shuffle)
+		batches = batch_generator(train, batch_size, shuffle=shuffle)
 		value = 0
 		for i in range(num_batches):
-			X, y = next(batches)
-			loss, prediction = self.train_fun(X, y)
-			value += self.train_metric(prediction, y)
+			X = next(batches)
+			loss, prediction = self.train_fun(*X)
+			value += self.train_metric(prediction, X[-1])
 			performance.add_loss(loss)
 			performance.progress_bar(i+1., num_batches, value/(i+1))
 		print("")
@@ -244,15 +243,15 @@ class NeuralTrainer:
 
 		performance = MonitorPerformance('test',self.objective, verbose)
 		num_batches = test[1].shape[0] // batch_size
-		batches = batch_generator(test[0], test[1], batch_size, shuffle=False)
+		batches = batch_generator(test, batch_size, shuffle=False)
 		label = []
 		prediction = []
 		for batch in range(num_batches):
-			X, y = next(batches)
-			loss, prediction_minibatch = self.test_fun(X, y)
+			X = next(batches)
+			loss, prediction_minibatch = self.test_fun(*X)
 			performance.add_loss(loss)
 			prediction.append(prediction_minibatch)
-			label.append(y)
+			label.append(X[-1])
 		prediction = np.vstack(prediction)
 		label = np.vstack(label)
 
@@ -455,14 +454,21 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 	prediction = layers.get_output(network['output'], deterministic=False)
 
 	if optimization['objective'] == 'lower_bound':
-		loss, prediction = variational_lower_bound(network, placeholders['targets'], deterministic=False, binary=True)
-		params = get_all_params(net['X'], trainable=True)
+		loss, prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)
+
+		# regularize parameters
+		loss += regularization(network['decode_mu'], optimization)
+
+		params = get_all_params(network['decode_mu'], trainable=True)
+
 	else:
 		loss = build_loss(placeholders['targets'], prediction, optimization)
+
+		# regularize parameters
+		loss += regularization(network['output'], optimization)
+
 		params = layers.get_all_params(network['output'], trainable=True)    
 
-	# regularize parameters
-	loss += regularization(network['output'], optimization)
 
 	# calculate and clip gradients
 	if "weight_norm" in optimization:
@@ -476,17 +482,13 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 
 	# test/validation set 
 	if optimization['objective'] == 'lower_bound':
-		loss, prediction = variational_lower_bound(network, placeholders['targets'], deterministic=False, binary=True)
-		test_loss = -log_likelihood - kl_divergence
-		params = get_all_params(net['X'], trainable=True)
+		test_loss, test_prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)
 	else:
-		loss = build_loss(placeholders['targets'], prediction, optimization)
-		params = layers.get_all_params(network['output'], trainable=True)    
-
-
-	test_prediction = layers.get_output(network['output'], deterministic=True)
-	test_loss = build_loss(placeholders['targets'], test_prediction, optimization)
-
+		test_prediction = layers.get_output(network['output'], deterministic=True)
+		test_loss = build_loss(placeholders['targets'], test_prediction, optimization)
+		
+	params = layers.get_all_params(network['output'], trainable=True)    
+	
 	# create theano function
 	train_fun = theano.function(list(placeholders.values()), [loss, prediction], updates=update_op)
 	test_fun = theano.function(list(placeholders.values()), [test_loss, test_prediction])
@@ -495,17 +497,17 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 
 def variational_lower_bound(network, targets, deterministic=False, binary=True):
 
-	z_mu = get_output(net['encode_mu'], deterministic=deterministic)
-	z_logsigma = get_output(net['encode_logsigma'], deterministic=deterministic)
+	z_mu = layers.get_output(network['encode_mu'], deterministic=deterministic)
+	z_logsigma = layers.get_output(network['encode_logsigma'], deterministic=deterministic)
 	kl_divergence = 0.5*T.sum(1 + 2*z_logsigma - T.sqr(z_mu) - T.exp(2*z_logsigma), axis=1)
 
 	if binary:
-		x_mu = get_output(net['X'], deterministic=deterministic)
+		x_mu = layers.get_output(network['decode_mu'], deterministic=deterministic)
 		x_mu = T.clip(x_mu, 1e-7, 1-1e-7)
 		log_likelihood = T.sum(targets*T.log(x_mu) + (1.0-targets)*T.log(1.0-x_mu), axis=1)
 	else:
-		x_mu = get_output(net['decode_mu'], deterministic=deterministic)
-		x_logsigma = get_output(net['decode_logsigma'], deterministic=deterministic)
+		x_mu = layers.get_output(network['decode_mu'], deterministic=deterministic)
+		x_logsigma = layers.get_output(network['decode_logsigma'], deterministic=deterministic)
 		log_likelihood = T.sum(-0.5*T.log(2*np.float32(np.pi))- x_logsigma - 0.5*T.sqr(targets-x_mu)/T.exp(2*x_logsigma),axis=1)
 
 	loss = -log_likelihood - kl_divergence
@@ -610,3 +612,10 @@ class GuidedBackprop(ModifiedBackprop):
 		(grd,) = out_grads
 		dtype = inp.dtype
 		return (grd * (inp > 0).astype(dtype) * (grd > 0).astype(dtype),)
+
+
+
+
+
+
+

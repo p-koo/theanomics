@@ -34,23 +34,36 @@ def make_directory(path, foldername, verbose=1):
 	return outdir
 
 
-def batch_generator(X, y, batch_size=128, shuffle=True):
+def batch_generator(X, batch_size=128, shuffle=True):
 	"""python generator to get a randomized minibatch"""
 	"""
 	while True:
 		idx = np.random.choice(len(y), N)
 		yield X[idx].astype('float32'), y[idx].astype('int32')
 	"""
+	if isinstance(X, (list, tuple)):
+		num_var = len(X)
+		num_data = len(X[0])
+	else:
+		num_var = 1
+		num_data = len(X)
+
 	if shuffle:
-		indices = np.arange(len(X))
+		indices = np.arange(num_data)
 		np.random.shuffle(indices)
-	for start_idx in range(0, len(X)-batch_size+1, batch_size):
+	for start_idx in range(0, num_data-batch_size+1, batch_size):
 		if shuffle:
 			excerpt = indices[start_idx:start_idx+batch_size]
 		else:
 			excerpt = slice(start_idx, start_idx+batch_size)
-		yield X[excerpt], y[excerpt]
 
+		if num_var > 1:
+			X_batch = []
+			for i in range(num_var):
+				X_batch.append(X[i][excerpt])
+			yield X_batch
+		else:
+			yield X[excerpt]
 
 
 
