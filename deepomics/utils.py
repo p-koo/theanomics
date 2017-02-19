@@ -63,7 +63,7 @@ def batch_generator(X, batch_size=128, shuffle=True):
 				X_batch.append(X[i][excerpt])
 			yield X_batch
 		else:
-			yield X[excerpt]
+			yield [X[excerpt]]
 
 
 
