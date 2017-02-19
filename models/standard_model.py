@@ -9,7 +9,7 @@ def model(shape, num_labels):
 
 	placeholders = collections.OrderedDict()
 	placeholders['inputs'] = T.tensor4('inputs')
-	placeholders['targets'] = target_var = T.dmatrix('targets')
+	placeholders['targets'] = T.dmatrix('targets')
 
 	# create model
 	layer1 = {'layer': 'input',
@@ -17,12 +17,12 @@ def model(shape, num_labels):
 			  'shape': shape,
 			  'name': 'input'
 			  }
-	layer2 = {'layer': 'convolution', 
+	layer2 = {'layer': 'conv1d', 
 			  'num_filters': 30,  #240
-			  'filter_size': (19, 1),
+			  'filter_size': 19,
 			  'norm': 'batch',
 			  'activation': 'relu',
-			  'pool_size': (20, 1),
+			  'pool_size': 20,
 			  'dropout': 0.2,
 			  'name': 'conv1'
 			  }

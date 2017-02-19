@@ -1,15 +1,20 @@
 #!/bin/python
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import os, sys, time
 import numpy as np
 from six.moves import cPickle
-import theano
-import theano.tensor as T
 from lasagne import layers, objectives, updates, regularization, nonlinearities
 from lasagne.regularization import apply_penalty, l1, l2
 from scipy import stats
 from .utils import normalize_pwm, batch_generator
 from .metrics import calculate_metrics
+
+import theano
+import theano.tensor as T
+
 
 
 __all__ = [
@@ -30,6 +35,7 @@ class NeuralNet:
 		self.placeholders = placeholders
 		self.saliency = np.copy(network)
 		self.saliency_fn = []
+		self.last_layer = list(self.network)[-1]
 
 	def get_model_parameters(self, layer='output'):
 		"""return all the parameters of the network"""
@@ -39,12 +45,15 @@ class NeuralNet:
 
 	def set_model_parameters(self, all_param_values, layer='output'):
 		"""initialize network with all_param_values"""
-
+		if layer not in self.network:
+			layer = self.last_layer
 		layers.set_all_param_values(self.network[layer], all_param_values)
 
 
 	def save_model_parameters(self, file_path, layer='output'):
 		"""save model parameters to a file"""
+		if layer not in self.network:
+			layer = self.last_layer
 
 		print("saving model parameters to: " + file_path)
 		all_param_values = self.get_model_parameters(layer)
@@ -54,6 +63,8 @@ class NeuralNet:
 
 	def load_model_parameters(self, file_path, layer='output'):
 		"""load model parametes from a file"""
+		if layer not in self.network:
+			layer = self.last_layer
 
 		print("loading model parameters from: " + file_path)
 		all_param_values = self.get_model_parameters(layer)
@@ -65,7 +76,7 @@ class NeuralNet:
 	def inspect_layers(self):
 		"""print each layer type and parameters"""
 
-		all_layers = layers.get_all_layers(self.network['output'])
+		all_layers = layers.get_all_layers(self.network[self.last_layer])
 		print('----------------------------------------------------------------------------')
 		print('Network architecture:')
 		print('----------------------------------------------------------------------------')
@@ -129,7 +140,10 @@ class NeuralNet:
 		"""compile a saliency function to perform guided back-propagation through
 		a network from the saliency_layer to the inputs"""
 
-		all_param_values = layers.get_all_param_values(self.network['output'])
+		if saliency_layer not in self.network:
+			saliency_layer = self.last_layer
+
+		all_param_values = layers.get_all_param_values(self.network[saliency_layer])
 		layers.set_all_param_values(self.saliency['output'], all_param_values)
 
 		modified_relu = GuidedBackprop(nonlinearities.rectify) 
@@ -451,17 +465,19 @@ class MonitorPerformance():
 def build_optimizer(network, placeholders, optimization, learning_rate):
 
 	# build loss function 
-	prediction = layers.get_output(network['output'], deterministic=False)
-
+	
 	if optimization['objective'] == 'lower_bound':
+		prediction = layers.get_output(network['decode_mu'], deterministic=False)
 		loss, prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)
 
 		# regularize parameters
-		loss += regularization(network['decode_mu'], optimization)
+		loss += regularization(network['decode_mu'], optimization)	
+		loss = objectives.aggregate(loss, mode='mean')
 
-		params = get_all_params(network['decode_mu'], trainable=True)
+		params = layers.get_all_params(network['decode_mu'], trainable=True)
 
 	else:
+		prediction = layers.get_output(network['output'], deterministic=False)
 		loss = build_loss(placeholders['targets'], prediction, optimization)
 
 		# regularize parameters
@@ -482,13 +498,12 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 
 	# test/validation set 
 	if optimization['objective'] == 'lower_bound':
-		test_loss, test_prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)
+		test_loss, test_prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)	
+		test_loss = objectives.aggregate(test_loss, mode='mean')
 	else:
 		test_prediction = layers.get_output(network['output'], deterministic=True)
 		test_loss = build_loss(placeholders['targets'], test_prediction, optimization)
-		
-	params = layers.get_all_params(network['output'], trainable=True)    
-	
+			
 	# create theano function
 	train_fun = theano.function(list(placeholders.values()), [loss, prediction], updates=update_op)
 	test_fun = theano.function(list(placeholders.values()), [test_loss, test_prediction])
@@ -580,10 +595,10 @@ def build_updates(grad, params, update_params, learning_rate):
   
 	return update_op
 
+
+
 #---------------------------------------------------------------------------------------------------------
 # saliency and reconstruction
-
-
 
 class ModifiedBackprop(object):
 
@@ -612,10 +627,3 @@ class GuidedBackprop(ModifiedBackprop):
 		(grd,) = out_grads
 		dtype = inp.dtype
 		return (grd * (inp > 0).astype(dtype) * (grd > 0).astype(dtype),)
-
-
-
-
-
-
-

@@ -1,25 +1,31 @@
 #/bin/python
+import collections
 from lasagne import layers, nonlinearities, init
+import theano
 import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
+
 
 __all__ = [
 	"build_network"
 ]
 
-def build_network(model_layers, autoencode=0):
+def build_network(model_layers, supervised=True):
 	""" build all layers in the model """
 	
 	network, last_layer = build_layers(model_layers)
-	network['output'] = network[last_layer]
+	if supervised:
+		network['output'] = network[last_layer]
 	return network
 
 
-def build_layers(model_layers, network={}):
+def build_layers(model_layers, network=collections.OrderedDict()):
 
 	# loop to build each layer of network
 	last_layer = ''
 	for model_layer in model_layers:
 		name = model_layer['name']
+		layer = model_layer['layer']
 
 		if name == "input":
 			# add input layer
@@ -27,7 +33,7 @@ def build_layers(model_layers, network={}):
 			last_layer = name
 		else:
 
-			if name == 'conv1d_residual':
+			if layer == 'conv1d_residual':
 				if 'residual_dropout' in model_layer:
 					dropout = model_layer['residual_dropout']
 				else:
@@ -37,7 +43,7 @@ def build_layers(model_layers, network={}):
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
-			elif name == 'conv2d_residual':
+			elif layer == 'conv2d_residual':
 				if 'residual_dropout' in model_layer:
 					dropout = model_layer['residual_dropout']
 				else:
@@ -47,7 +53,7 @@ def build_layers(model_layers, network={}):
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
-			elif name == 'dense_residual':
+			elif layer == 'dense_residual':
 				if 'residual_dropout' in model_layer:
 					dropout = model_layer['residual_dropout']
 				else:
@@ -57,22 +63,36 @@ def build_layers(model_layers, network={}):
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
-			# add core layer
-			new_layer = name #'# str(counter) + '_' + name + '_batch'
-			network[new_layer] = single_layer(model_layer, network[last_layer])
-			last_layer = new_layer
+			elif layer == 'variational':
+				network['encode_mu'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'])
+				network['encode_logsigma'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'])
+				network['Z'] = VariationalSampleLayer(network['encode_mu'], network['encode_logsigma'])
+				last_layer = 'Z'
+			else:
 
-			# add bias layer
-			if 'b' in model_layer:
-				new_layer = name+'_bias'
-				network[new_layer] = layers.BiasLayer(network[last_layer], b=model_layer['b'])
+				# add core layer
+				new_layer = name #'# str(counter) + '_' + name + '_batch'
+				network[new_layer] = single_layer(model_layer, network[last_layer])
 				last_layer = new_layer
-			
+
 		# add Batch normalization layer
 		if 'norm' in model_layer:
 			if 'batch' in model_layer['norm']:
 				new_layer = name + '_batch' #str(counter) + '_' + name + '_batch'
 				network[new_layer] = layers.BatchNormLayer(network[last_layer])
+				last_layer = new_layer
+		else:						# add bias layer
+			if (model_layer['layer'] == 'dense') | (model_layer['layer'] == 'conv1d') | (model_layer['layer'] == 'conv2d'):		
+				if ('b' in model_layer):
+					if model_layer['b'] != None:
+						if 'b' in model_layer:		
+							b=model_layer['b']
+					else:	
+						b = init.Constant(0.05)		
+				else:	
+					b = init.Constant(0.05)		
+				new_layer = name+'_bias'
+				network[new_layer] = layers.BiasLayer(network[last_layer], b=b)
 				last_layer = new_layer
 
 		# add activation layer
@@ -100,9 +120,9 @@ def build_layers(model_layers, network={}):
 			if isinstance(model_layer['pool_size'], (list, tuple)):
 				pool_size = model_layer['pool_size']
 			else:
-				if '1d' in name:
+				if '1d' in layer:
 					pool_size = (model_layer['pool_size'], 1)
-				elif '2d' in name:
+				elif '2d' in layer:
 					pool_size = (model_layer['pool_size'], model_layer['pool_size'])
 			new_layer = name+'_pool'  # str(counter) + '_' + name+'_pool' 
 			network[new_layer] = layers.MaxPool2DLayer(network[last_layer], pool_size=pool_size)
@@ -171,7 +191,7 @@ def single_layer(model_layer, network_last):
 		else:
 			filter_size = (model_layer['filter_size'], 1)
 		network = layers.Conv2DLayer(network_last, num_filters=model_layer['num_filters'],
-											  filter_size=model_layer['filter_size'],
+											  filter_size=filter_size,
 											  W=W,
 											  b=None, 
 											  pad=pad,
@@ -481,6 +501,27 @@ def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify):
 	net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
 
 	return net
+
+
+#---------------------------------------------------------------------------------------------------------
+# variational sampling
+
+class VariationalSampleLayer(layers.MergeLayer):
+    def __init__(self, incoming_mu, incoming_logsigma, **kwargs):
+        super(VariationalSampleLayer, self).__init__(incomings=[incoming_mu, incoming_logsigma], **kwargs)
+        self.srng = RandomStreams(seed=234)
+
+    def get_output_shape_for(self, input_shapes):
+        return input_shapes[0]
+
+    def get_output_for(self, inputs, deterministic=False, **kwargs):
+        mu, logsigma = inputs
+        shape=(self.input_shapes[0][0] or inputs[0].shape[0],
+                self.input_shapes[0][1] or inputs[0].shape[1])
+        if deterministic:
+            return mu
+        return mu + T.exp(logsigma) * self.srng.normal(shape, avg=0.0, std=1).astype(theano.config.floatX)    
+
 
 #--------------------------------------------------------------------------------------------------------------------
 # Denoising layer for ladder network
