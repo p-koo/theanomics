@@ -128,5 +128,16 @@ def calculate_metrics(label, prediction, objective):
         rsqr, slope = rsquare(label, prediction)
         mean = [np.nanmean(corr), np.nanmean(rsqr), np.nanmean(slope)]
         std = [np.nanstd(corr), np.nanstd(rsqr), np.nanstd(slope)]
+
+    elif (objective == 'lower_bound'):
+        mean = np.mean((label - prediction)**2)
+        std = 0
+
     return [mean, std]
+
+
+
+
+
+
 

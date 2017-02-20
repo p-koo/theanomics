@@ -19,7 +19,6 @@ __all__ = [
 ]
 
 
-
 def make_directory(path, foldername, verbose=1):
 	"""make a directory"""
 
@@ -51,6 +50,7 @@ def batch_generator(X, batch_size=128, shuffle=True):
 	if shuffle:
 		indices = np.arange(num_data)
 		np.random.shuffle(indices)
+
 	for start_idx in range(0, num_data-batch_size+1, batch_size):
 		if shuffle:
 			excerpt = indices[start_idx:start_idx+batch_size]
@@ -63,7 +63,10 @@ def batch_generator(X, batch_size=128, shuffle=True):
 				X_batch.append(X[i][excerpt])
 			yield X_batch
 		else:
-			yield [X[excerpt]]
+			if isinstance(X, (list, tuple)):
+				yield [X[0][excerpt]]
+			else:
+				yield [X[excerpt]]
 
 
 

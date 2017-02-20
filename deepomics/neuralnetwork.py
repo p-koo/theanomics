@@ -226,7 +226,11 @@ class NeuralTrainer:
 		performance.set_start_time(start_time = time.time())
 
 		# train on mini-batch with random shuffling
-		num_batches = train[0].shape[0] // batch_size
+		if isinstance(train, (list, tuple)):
+			num_data = train[0].shape[0]
+		else:
+			num_data = train.shape[0]
+		num_batches = np.floor(train[0].shape[0] / batch_size).astype(int)
 		batches = batch_generator(train, batch_size, shuffle=shuffle)
 		value = 0
 		for i in range(num_batches):
@@ -248,7 +252,7 @@ class NeuralTrainer:
 			return np.mean(np.round(prediction) == y)
 		elif self.objective == 'squared_error':
 			return np.corrcoef(prediction[:,0],y[:,0])[0][1]
-		elif self.objective == 'vae':
+		elif self.objective == 'lower_bound':
 			return np.mean((prediction - y)**2)
 
 
@@ -256,11 +260,16 @@ class NeuralTrainer:
 		"""perform a complete forward pass with a test function"""
 
 		performance = MonitorPerformance('test',self.objective, verbose)
-		num_batches = test[1].shape[0] // batch_size
+
+		if isinstance(test, (list, tuple)):
+			num_data = test[0].shape[0]
+		else:
+			num_data = test.shape[0]
+		num_batches = np.floor(num_data / batch_size).astype(int)
 		batches = batch_generator(test, batch_size, shuffle=False)
 		label = []
 		prediction = []
-		for batch in range(num_batches):
+		for i in range(num_batches):
 			X = next(batches)
 			loss, prediction_minibatch = self.test_fun(*X)
 			performance.add_loss(loss)
@@ -413,7 +422,7 @@ class MonitorPerformance():
 			if name == 'test':
 				name += ' '
 
-			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]/1.))
+			print("  " + name + " loss:\t\t{:.5f}".format(self.loss[-1]))
 			mean_vals, error_vals = self.get_metric_values()
 
 			if (self.objective == "binary") | (self.objective == "categorical"):
@@ -424,7 +433,9 @@ class MonitorPerformance():
 				print("  " + name + " Pearson's R:\t{:.5f}+/-{:.5f}".format(mean_vals[0], error_vals[0]))
 				print("  " + name + " rsquare:\t{:.5f}+/-{:.5f}".format(mean_vals[1], error_vals[1]))
 				print("  " + name + " slope:\t\t{:.5f}+/-{:.5f}".format(mean_vals[2], error_vals[2]))
-
+			elif (self.objective == 'lower_bound'):
+				print("  " + name + " squared loss:\t{:.5f}".format(mean_vals))
+				
 
 	def progress_bar(self, epoch, num_batches, value, bar_length=30):
 		if self.verbose == 1:
@@ -438,7 +449,9 @@ class MonitorPerformance():
 			elif (self.objective == 'squared_error'):
 				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f -- correlation=%.5f  " \
 				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss(), value))
-
+			elif (self.objective == 'lower_bound'):
+				sys.stdout.write("\r[%s] %.1f%% -- time=%ds -- loss=%.5f  " \
+				%(progress+spaces, percent*100, remaining_time, self.get_mean_loss()))
 
 			sys.stdout.flush()
 
