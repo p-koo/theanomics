@@ -16,6 +16,8 @@ def build_network(model_layers, supervised=True):
 	network, last_layer = build_layers(model_layers)
 	if supervised:
 		network['output'] = network[last_layer]
+	else:
+		network['X'] = network[last_layer]
 	return network
 
 
@@ -354,7 +356,7 @@ def activation_layer(network_last, activation):
 	elif activation == 'softplus':
 		network = layers.NonlinearityLayer(network_last, nonlinearity=nonlinearities.softplus)
 
-	elif activation == 'leakyrelu':
+	elif activation == 'leaky_relu':
 			network = layers.NonlinearityLayer(network_last, nonlinearity=nonlinearities.leaky_rectify)
 	
 	elif activation == 'veryleakyrelu':
@@ -367,6 +369,27 @@ def activation_layer(network_last, activation):
 		network = layers.NonlinearityLayer(network_last, nonlinearity=nonlinearities.orthogonal)
 		
 	return network
+
+
+
+#---------------------------------------------------------------------------------------------------------
+# variational sampling
+
+class VariationalSampleLayer(layers.MergeLayer):
+    def __init__(self, incoming_mu, incoming_logsigma, **kwargs):
+        super(VariationalSampleLayer, self).__init__(incomings=[incoming_mu, incoming_logsigma], **kwargs)
+        self.srng = RandomStreams(seed=234)
+
+    def get_output_shape_for(self, input_shapes):
+        return input_shapes[0]
+
+    def get_output_for(self, inputs, deterministic=False, **kwargs):
+        mu, logsigma = inputs
+        shape=(self.input_shapes[0][0] or inputs[0].shape[0],
+                self.input_shapes[0][1] or inputs[0].shape[1])
+        if deterministic:
+            return mu
+        return mu + T.exp(logsigma) * self.srng.normal(shape, avg=0.0, std=1).astype(theano.config.floatX)    
 
 
 #--------------------------------------------------------------------------------------------------------------------
@@ -501,27 +524,6 @@ def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify):
 	net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
 
 	return net
-
-
-#---------------------------------------------------------------------------------------------------------
-# variational sampling
-
-class VariationalSampleLayer(layers.MergeLayer):
-    def __init__(self, incoming_mu, incoming_logsigma, **kwargs):
-        super(VariationalSampleLayer, self).__init__(incomings=[incoming_mu, incoming_logsigma], **kwargs)
-        self.srng = RandomStreams(seed=234)
-
-    def get_output_shape_for(self, input_shapes):
-        return input_shapes[0]
-
-    def get_output_for(self, inputs, deterministic=False, **kwargs):
-        mu, logsigma = inputs
-        shape=(self.input_shapes[0][0] or inputs[0].shape[0],
-                self.input_shapes[0][1] or inputs[0].shape[1])
-        if deterministic:
-            return mu
-        return mu + T.exp(logsigma) * self.srng.normal(shape, avg=0.0, std=1).astype(theano.config.floatX)    
-
 
 #--------------------------------------------------------------------------------------------------------------------
 # Denoising layer for ladder network

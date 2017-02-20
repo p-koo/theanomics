@@ -480,14 +480,18 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 	# build loss function 
 	
 	if optimization['objective'] == 'lower_bound':
-		prediction = layers.get_output(network['decode_mu'], deterministic=False)
-		loss, prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)
+		if 'binary' in optimization:
+			binary = optimization['binary']
+		else:
+			binary = False
+
+		loss, prediction = variational_lower_bound(network, placeholders['inputs'], 
+													deterministic=False, binary=binary)
 
 		# regularize parameters
-		loss += regularization(network['decode_mu'], optimization)	
-		loss = objectives.aggregate(loss, mode='mean')
+		loss += regularization(network['X'], optimization)	
 
-		params = layers.get_all_params(network['decode_mu'], trainable=True)
+		params = layers.get_all_params(network['X'], trainable=True)
 
 	else:
 		prediction = layers.get_output(network['output'], deterministic=False)
@@ -511,8 +515,7 @@ def build_optimizer(network, placeholders, optimization, learning_rate):
 
 	# test/validation set 
 	if optimization['objective'] == 'lower_bound':
-		test_loss, test_prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=True)	
-		test_loss = objectives.aggregate(test_loss, mode='mean')
+		test_loss, test_prediction = variational_lower_bound(network, placeholders['inputs'], deterministic=False, binary=binary)	
 	else:
 		test_prediction = layers.get_output(network['output'], deterministic=True)
 		test_loss = build_loss(placeholders['targets'], test_prediction, optimization)
@@ -529,18 +532,17 @@ def variational_lower_bound(network, targets, deterministic=False, binary=True):
 	z_logsigma = layers.get_output(network['encode_logsigma'], deterministic=deterministic)
 	kl_divergence = 0.5*T.sum(1 + 2*z_logsigma - T.sqr(z_mu) - T.exp(2*z_logsigma), axis=1)
 
+	x_mu = layers.get_output(network['X'], deterministic=deterministic)
 	if binary:
-		x_mu = layers.get_output(network['decode_mu'], deterministic=deterministic)
 		x_mu = T.clip(x_mu, 1e-7, 1-1e-7)
-		log_likelihood = T.sum(targets*T.log(x_mu) + (1.0-targets)*T.log(1.0-x_mu), axis=1)
+		log_likelihood = T.sum(targets*T.log(1e-10+x_mu) + (1.0-targets)*T.log(1e-10+1.0-x_mu), axis=1)
 	else:
-		x_mu = layers.get_output(network['decode_mu'], deterministic=deterministic)
-		x_logsigma = layers.get_output(network['decode_logsigma'], deterministic=deterministic)
+		x_logsigma = T.log(T.sqrt(x_mu*(1-x_mu))) #layers.get_output(network['decode_logsigma'], deterministic=deterministic)
 		log_likelihood = T.sum(-0.5*T.log(2*np.float32(np.pi))- x_logsigma - 0.5*T.sqr(targets-x_mu)/T.exp(2*x_logsigma),axis=1)
 
-	loss = -log_likelihood - kl_divergence
+	variational_lower_bound = -log_likelihood - kl_divergence
 	prediction = x_mu
-	return loss, prediction
+	return variational_lower_bound.mean(), prediction
 
 
 def build_loss(targets, prediction, optimization):
@@ -588,23 +590,39 @@ def calculate_gradient(loss, params, weight_norm=[]):
 	return grad
 
 
-def build_updates(grad, params, update_params, learning_rate):
+def build_updates(grad, params, optimization, learning_rate):
 	""" setup optimization algorithm """
 
-	if update_params['optimizer'] == 'sgd':
+	if optimization['optimizer'] == 'sgd':
 		update_op = updates.sgd(grad, params, learning_rate=learning_rate) 
  
-	elif update_params['optimizer'] == 'nesterov_momentum':
-		update_op = updates.nesterov_momentum(grad, params, learning_rate=learning_rate, momentum=update_params['momentum'])
+	elif optimization['optimizer'] == 'nesterov_momentum':
+		if momenum in optimization:
+			momentum = optimization['momentum']
+		else:
+			momentum = 0.9
+		update_op = updates.nesterov_momentum(grad, params, learning_rate=learning_rate, momentum=momentum)
 	
-	elif update_params['optimizer'] == 'adagrad':
+	elif optimization['optimizer'] == 'adagrad':
 		update_op = updates.adagrad(grad, params, learning_rate=learning_rate)
 	
-	elif update_params['optimizer'] == 'rmsprop':
-		update_op = updates.rmsprop(grad, params, learning_rate=learning_rate)
+	elif optimization['optimizer'] == 'rmsprop':
+		if 'rho' in optimization:
+			rho = optimization['rho']
+		else:
+			rho = 0.9
+		update_op = updates.rmsprop(grad, params, learning_rate=learning_rate, rho=rho)
 	
-	elif update_params['optimizer'] == 'adam':
-		update_op = updates.adam(grad, params, learning_rate=learning_rate)
+	elif optimization['optimizer'] == 'adam':
+		if 'beta1' in optimization:
+			beta1 = optimization['beta1']
+		else:
+			beta1 = 0.9
+		if 'beta2' in optimization:
+			beta2 = optimization['beta2']
+		else:
+			beta2 = 0.999
+		update_op = updates.adam(grad, params, learning_rate=learning_rate, beta1=beta1, beta2=beta2)
   
 	return update_op
 
