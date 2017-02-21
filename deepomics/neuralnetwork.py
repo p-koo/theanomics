@@ -33,7 +33,7 @@ class NeuralNet:
 	def __init__(self, network, placeholders):
 		self.network = network
 		self.placeholders = placeholders
-		self.saliency = np.copy(network)
+		self.saliency = network.copy()
 		self.saliency_fn = []
 		self.last_layer = list(self.network)[-1]
 
