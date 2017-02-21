@@ -3,19 +3,11 @@ import collections
 
 sys.path.append('..')
 from deepomics.build_network import build_network 
-import theano.tensor as T
 
-def model(shape, num_labels):
+def model(input_shape, output_shape):
 
-	placeholders = collections.OrderedDict()
-	placeholders['inputs'] = T.tensor4('inputs')
-	placeholders['targets'] = T.dmatrix('targets')
-
-	# create model
 	layer1 = {'layer': 'input',
-			  'input_var': placeholders['inputs'],
-			  'shape': shape,
-			  'name': 'input'
+			  'shape': input_shape
 			  }
 	layer2 = {'layer': 'conv2d', 
 			  'num_filters': 16,  #240
@@ -25,7 +17,6 @@ def model(shape, num_labels):
 			  'pool_size': (2,2),
 			  'pad': 'same',
 			  'dropout': 0.2,
-			  'name': 'conv1'
 			  }
 	layer3 = {'layer': 'conv2d', 
 			  'num_filters': 32,  #240
@@ -35,22 +26,19 @@ def model(shape, num_labels):
 			  'pool_size': (2,2),
 			  'pad': 'same',
 			  'dropout': 0.2,
-			  'name': 'conv2'
 			  }
 	layer4 = {'layer': 'dense', 
 			  'num_units': 512,
 			  'norm': 'batch',
 			  'activation': 'relu',
-			  'name': 'dense1'
 			  }
 	layer5 = {'layer': 'dense', 
-			  'num_units': num_labels,
+			  'num_units': output_shape[1],
 			  'activation': 'softmax',
-			  'name': 'dense2'
 			  }
 		  
 	model_layers = [layer1, layer2, layer3, layer4, layer5]
-	network = build_network(model_layers)
+	network, placeholders = build_network(model_layers, output_shape, supervised=True)
 
 	# optimization parameters
 	optimization = {"objective": "categorical",			  

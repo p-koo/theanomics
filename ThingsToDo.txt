@@ -1,8 +1,7 @@
-
-
-- write better batch generator
-- example vae
+- better verbose
 - example explorer
 - modelchecker
 	- check activations of each layer
 	- 
+
+- example gans

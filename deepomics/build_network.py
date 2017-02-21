@@ -10,29 +10,27 @@ __all__ = [
 	"build_network"
 ]
 
-def build_network(model_layers, supervised=True):
-	""" build all layers in the model """
-	
-	network, last_layer = build_layers(model_layers)
-	if supervised:
-		network['output'] = network[last_layer]
-	else:
-		network['X'] = network[last_layer]
-	return network
 
+def build_network(model_layers, output_shape, 
+								supervised=True, 
+								network=collections.OrderedDict(), 
+								placeholders=collections.OrderedDict()):
 
-def build_layers(model_layers, network=collections.OrderedDict()):
+	# name generator
+	name_gen = NameGenerator()
 
 	# loop to build each layer of network
 	last_layer = ''
 	for model_layer in model_layers:
-		name = model_layer['name']
-		layer = model_layer['layer']
 
-		if name == "input":
-			# add input layer
-			network[name] = single_layer(model_layer, network)
+		layer = model_layer['layer']
+		name = name_gen.generate_name(layer)
+
+		if layer == "input":
+			placeholders[name] = create_tensor(model_layer['shape'], name)
+			network[name] = layers.InputLayer(model_layer['shape'], input_var=placeholders[name])
 			last_layer = name
+
 		else:
 
 			if layer == 'conv1d_residual':
@@ -40,7 +38,7 @@ def build_layers(model_layers, network=collections.OrderedDict()):
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
-				network = conv1d_residual(network, last_layer, model_layer['name'], model_layer['filter_size'], 
+				network = conv1D_residual(network, last_layer, name, model_layer['filter_size'], 
 											nonlinearity=nonlinearities.rectify, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
@@ -50,7 +48,7 @@ def build_layers(model_layers, network=collections.OrderedDict()):
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
-				network = conv2d_residual(network, last_layer, model_layer['name'], model_layer['filter_size'], 
+				network = conv2D_residual(network, last_layer, name, model_layer['filter_size'], 
 											nonlinearity=nonlinearities.rectify, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
@@ -60,18 +58,22 @@ def build_layers(model_layers, network=collections.OrderedDict()):
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
-				network = dense_residual(network, last_layer, model_layer['name'], 
+				network = dense_residual(network, last_layer, name, 
 											nonlinearity=nonlinearities.rectify, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
 			elif layer == 'variational':
-				network['encode_mu'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'])
-				network['encode_logsigma'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'])
+				network['encode_mu'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'], 
+																		W=init.HeUniform(), b=init.Constant(0.0),
+																		nonlinearity=nonlinearities.linear)
+				network['encode_logsigma'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'], 
+																		W=init.HeUniform(), b=init.Constant(0.0),
+																		nonlinearity=nonlinearities.linear)
 				network['Z'] = VariationalSampleLayer(network['encode_mu'], network['encode_logsigma'])
 				last_layer = 'Z'
-			else:
 
+			else:
 				# add core layer
 				new_layer = name #'# str(counter) + '_' + name + '_batch'
 				network[new_layer] = single_layer(model_layer, network[last_layer])
@@ -153,22 +155,28 @@ def build_layers(model_layers, network=collections.OrderedDict()):
 			network[new_layer] = layers.Upscale2DLayer(network[last_layer], scale_factor=unpool_size)
 			last_layer = new_layer
 
-	return network, last_layer
+	if supervised:
+		network['output'] = network[last_layer]
+
+		# create targets tensor
+		placeholders['targets'] = create_tensor(output_shape, 'targets')
+	else:
+		network['X'] = network[last_layer]
+
+
+	return network, placeholders
+
 
 
 def single_layer(model_layer, network_last):
 	""" build a single layer"""
 
-	# input layer
-	if model_layer['layer'] == 'input':
-		network = layers.InputLayer(model_layer['shape'], input_var=model_layer['input_var'])
-
 	# dense layer
-	elif model_layer['layer'] == 'dense':
+	if model_layer['layer'] == 'dense':
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeNormal()
+			W = init.HeUniform()
 		network = layers.DenseLayer(network_last, num_units=model_layer['num_units'],
 											 W=W,
 											 b=None, 
@@ -229,7 +237,7 @@ def single_layer(model_layer, network_last):
 											  nonlinearity=None)
 
 	# 1D convolution layer
-	elif model_layer['layer'] == 'transpose-conv1d':
+	elif model_layer['layer'] == 'transpose_conv1d':
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
@@ -253,8 +261,9 @@ def single_layer(model_layer, network_last):
 											  crop=pad,
 											  stride=stride,
 											  nonlinearity=None)
+
 	# 2D convolution layer
-	elif (model_layer['layer'] == 'transpose-conv2d') | (model_layer['layer'] == 'transpose-convolution'):
+	elif (model_layer['layer'] == 'transpose_conv2d') | (model_layer['layer'] == 'transpose_convolution'):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
@@ -313,7 +322,7 @@ def single_layer(model_layer, network_last):
 											grad_clipping=grad_clipping)
 
 	# bi-directional lstm layer
-	elif model_layer['layer'] == 'bi-lstm':
+	elif model_layer['layer'] == 'bilstm':
 		if 'grad_clipping' in model_layer:
 			grad_clipping = model_layer['grad_clipping']
 		else:
@@ -493,7 +502,7 @@ def conv2D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearit
 
 
 
-def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify):
+def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify, dropout=None):
 
 	# initial residual unit
 	shape = layers.get_output_shape(net[last_layer])
@@ -524,6 +533,7 @@ def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify):
 	net[name+'_resid'] = layers.NonlinearityLayer(net[name+'_residual'], nonlinearity=nonlinearity)
 
 	return net
+
 
 #--------------------------------------------------------------------------------------------------------------------
 # Denoising layer for ladder network
@@ -588,5 +598,114 @@ class DecorrLayer():
 		
 		return T.dot(self.L, input.T).T
 
+
+#--------------------------------------------------------------------------------------------------------------------
+# help keep track of names for main layers
+
+class NameGenerator():
+	def __init__(self):
+		self.num_input = 0
+		self.num_conv1d = 0
+		self.num_conv2d = 0
+		self.num_dense = 0
+		self.num_conv1d_residual = 0
+		self.num_conv2d_residual = 0
+		self.num_dense_residual = 0 
+		self.num_transpose_conv1d = 0
+		self.num_transpose_conv2d = 0
+		self.num_concat = 0
+		self.num_sum = 0
+		self.num_reshape = 0
+		self.num_noise = 0
+		self.num_lstm = 0
+		self.num_bilstm = 0
+		self.num_highway = 0
+		self.num_variational = 0
+
+	def generate_name(self, layer):
+		if layer == 'input':
+			if self.num_input == 0:
+				name = 'inputs'
+			else:
+				name = 'inputs_' + str(self.num_input)
+			self.num_input += 1
+
+		elif layer == 'conv1d':
+			name = 'conv1d_' + str(self.num_conv1d)
+			self.num_conv1d += 1
+
+		elif (layer == 'conv2d') | (layer == 'convolution'):
+			name = 'conv2d_' + str(self.num_conv2d)
+			self.num_conv2d += 1
+
+		elif layer == 'dense':
+			name = 'dense_' + str(self.num_dense)
+			self.num_dense += 1
+
+		elif layer == 'conv1d_residual':
+			name = 'conv1d_residual_' + str(self.num_conv1d_residual)
+			self.num_conv1d_residual += 1
+
+		elif layer == 'conv2d_residual':
+			name = 'conv2d_residual_' + str(self.num_conv2d_residual)
+			self.num_conv1d_residual += 1
+
+		elif layer == 'dense_residual':
+			name = 'dense_residual_' + str(self.num_dense_residual)
+			self.num_dense_residual += 1
+
+		elif layer == 'transpose_conv1d':
+			name = 'transpose_conv1d_' + str(self.num_transpose_conv1d)
+			self.num_transpose_conv1d += 1
+
+		elif (layer == 'transpose_conv2d') | (layer == 'transpose_convolution'):
+			name = 'transpose_conv2d_' + str(self.num_transpose_conv2d)
+			self.num_transpose_conv2d += 1
+
+		elif layer == 'concat':
+			name = 'concat_' + str(self.num_concat)
+			self.num_concat += 1
+
+		elif layer == 'sum':
+			name = 'sum_' + str(self.num_sum)
+			self.num_sum += 1
+
+		elif layer == 'reshape':
+			name = 'reshape_' + str(self.num_reshape)
+			self.num_reshape += 1
+
+		elif layer == 'noise':
+			name = 'noise_' + str(self.num_noise)
+			self.num_noise += 1
+
+		elif layer == 'lstm':
+			name = 'lstm_' + str(self.num_lstm)
+			self.num_lstm += 1
+
+		elif layer == 'bilstm':
+			name = 'bilstm_' + str(self.num_bilstm)
+			self.num_bilstm += 1
+
+		elif layer == 'highway':
+			name = 'highway_' + str(self.num_highway)
+			self.num_highway += 1
+
+		elif layer == 'variational':
+			name = 'variational_' + str(self.num_variational)
+			self.num_variational += 1
+
+		return name
+
+
+def create_tensor(shape, name):
+	num_dim = len(shape)
+	if num_dim == 1:
+		return T.dvector(name)
+	elif num_dim == 2:
+		return T.dmatrix(name)
+	elif num_dim == 3:
+		return T.tensor3(name)
+	elif num_dim == 4:
+		return T.tensor4(name)
 
 

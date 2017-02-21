@@ -12,10 +12,11 @@ from theano.tensor.shared_randomstreams import RandomStreams
 
 def model(shape):
 
+	"""
+
 	placeholders = collections.OrderedDict()
 	placeholders['inputs'] = T.dmatrix('inputs')
 
-	"""
 	num_encode=2
 	num_units=200
 
@@ -36,62 +37,55 @@ def model(shape):
 	                                  b=init.Constant(.0), nonlinearity=nonlinearities.leaky_rectify)
 	network['decode2'] = layers.DenseLayer(network['decode1'], num_units=200, W=init.GlorotUniform(), 
 	                                  b=init.Constant(.0), nonlinearity=nonlinearities.leaky_rectify)
-	network['decode_mu'] = layers.DenseLayer(network['decode2'], num_units=shape[1],  W=init.GlorotUniform(), 
+	network['X'] = layers.DenseLayer(network['decode2'], num_units=shape[1],  W=init.GlorotUniform(), 
 	                                  b=init.Constant(.0), nonlinearity=nonlinearities.sigmoid)
 	#network['decode_logsigma'] = layers.DenseLayer(network['decode2'], num_units=x_dim, nonlinearity=nonlinearities.linear)
 	#network['X'] = VariationalSampleLayer(network['decode_mu'], network['decode_logsigma'])
 	"""
 	
+	#"""
 	# create model
 	layer1 = {'layer': 'input',
-			  'input_var': placeholders['inputs'],
 			  'shape': shape,
-			  'name': 'input'
 			  }
 	layer2 = {'layer': 'dense', 
 			  'num_units': 200,  
-			  'activation': 'relu',
-			  'name': 'dense1'
+			  'activation': 'leaky_relu',
 			  }
 	layer3 = {'layer': 'dense', 
 			  'num_units': 100,
-			  'activation': 'relu',
-			  'name': 'dense2'  
+			  'activation': 'leaky_relu',
 			  }
 	layer4 = {'layer': 'variational', 
 			  'num_units': 2,
-			  'name': 'encode'  
 			  }
 	layer5 = {'layer': 'dense', 
 			  'num_units': 100,
-			  'activation': 'relu',
-			  'name': 'dense3'
+			  'activation': 'leaky_relu',
 			  }
 	layer6 = {'layer': 'dense', 
 			  'num_units': 200,  
-			  'activation': 'relu',
-			  'name': 'dense4'
+			  'activation': 'leaky_relu',
 			  }
 	layer7 = {'layer': 'dense', 
 			  'num_units': shape[1],
 			  'activation': 'sigmoid',
-			  'name': 'decode_mu'
 			  }
 		  
 	model_layers = [layer1, layer2, layer3, layer4, layer5, layer6, layer7]
-	network = build_network(model_layers, supervised=False)
-	
+	network, placeholders = build_network(model_layers, shape, supervised=False)
+	#"""
 	# optimization parameters
 	optimization = {"objective": "lower_bound",			  
 					'binary': False,
 					"optimizer": "adam",
-					"learning_rate": 0.0005      
+					"learning_rate": 0.001
 					#"l2": 1e-6,
 					# "l1": 0, 
 					}
 
-
 	return network, placeholders, optimization
+
 
 
 class VariationalSampleLayer(layers.MergeLayer):

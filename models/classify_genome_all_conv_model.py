@@ -2,7 +2,7 @@ import collections
 from lasagne import layers, nonlinearities, init
 import theano.tensor as T
 
-def model(shape, num_labels):
+def model(input_shape, output_shape):
 
 	def residual_block(net, last_layer, name, filter_size, nonlinearity=nonlinearities.rectify):
 
@@ -29,15 +29,12 @@ def model(shape, num_labels):
 	    return net
 
 
-
 	placeholders = collections.OrderedDict()
 	placeholders['inputs'] = T.tensor4('inputs')
 	placeholders['targets'] = target_var = T.dmatrix('targets')
-
-
 	
 	net = {}
-	net['input'] = layers.InputLayer(input_var=placeholders['inputs'], shape=shape)
+	net['input'] = layers.InputLayer(input_var=placeholders['inputs'], shape=input_shape)
 	net['conv1'] = layers.Conv2DLayer(net['input'], num_filters=30, filter_size=(9, 1), stride=(1, 1),    # 198
 	                                    W=init.HeUniform(), b=None, nonlinearity=None, pad='valid')
 	net['conv1_norm'] = layers.BatchNormLayer(net['conv1'])
@@ -70,11 +67,11 @@ def model(shape, num_labels):
 	net = residual_block(net, 'conv4_dropout1', 'conv4_2', filter_size=(5,1), nonlinearity=nonlinearities.rectify)
 	net['conv4_dropout'] = layers.DropoutLayer(net['conv4_2_resid'], p=0.1)
 
-	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=num_labels, filter_size=(7, 1), stride=(1, 1), # 7->1
+	net['conv5'] = layers.Conv2DLayer(net['conv4_dropout'], num_filters=output_shape[1], filter_size=(7, 1), stride=(1, 1), # 7->1
 	                                    W=init.HeUniform(), b=init.Constant(0.05), nonlinearity=None, pad='valid')
 	net['conv5_active'] = layers.NonlinearityLayer(net['conv5'], nonlinearity=nonlinearities.sigmoid)
 	
-	net['output'] = layers.ReshapeLayer(net['conv5_active'], [-1, num_labels])
+	net['output'] = layers.ReshapeLayer(net['conv5_active'], [-1, output_shape[1]])
 
 
 	# optimization parameters

@@ -3,44 +3,31 @@ import collections
 
 sys.path.append('..')
 from deepomics.build_network import build_network 
-import theano.tensor as T
 
-def model(shape, num_labels):
+def model(input_shape, output_shape):
 
-	placeholders = collections.OrderedDict()
-	placeholders['inputs'] = T.tensor4('inputs')
-	placeholders['targets'] = T.dmatrix('targets')
-
-	# create model
 	layer1 = {'layer': 'input',
-			  'input_var': placeholders['inputs'],
-			  'shape': shape,
-			  'name': 'input'
+			  'shape': input_shape
 			  }
 	layer2 = {'layer': 'conv1d', 
-			  'num_filters': 30,  #240
-			  'filter_size': 19,
-			  'norm': 'batch',
+			  'num_filters': 20,  #240
+			  'filter_size': 24,
 			  'activation': 'relu',
-			  'pool_size': 20,
-			  'dropout': 0.2,
-			  'name': 'conv1'
+			  'global_pool': 'max',
 			  }
 	layer3 = {'layer': 'dense', 
-			  'num_units': 512,
+			  'num_units': 100,
 			  'norm': 'batch',
 			  'activation': 'relu',
 			  'dropout': 0.5,
-			  'name': 'dense1'
 			  }
 	layer4 = {'layer': 'dense', 
-			  'num_units': num_labels,
+			  'num_units': output_shape[1],
 			  'activation': 'sigmoid',
-			  'name': 'dense1'
 			  }
 		  
 	model_layers = [layer1, layer2, layer3, layer4]
-	network = build_network(model_layers)
+	network, placeholders = build_network(model_layers, output_shape, supervised=True)
 
 	# optimization parameters
 	optimization = {"objective": "binary",
