@@ -22,7 +22,7 @@ def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500,
 
 	# train model
 	for epoch in range(num_epochs):
-		if verbose == 1:
+		if verbose >= 1:
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training set
@@ -56,7 +56,7 @@ def train_variable_learning_rate(nntrainer, train, valid, learning_rate_schedule
 	"""
 	# train model
 	for epoch in range(num_epochs):
-		if verbose == 1:
+		if verbose >= 1:
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# change learning rate if on schedule
@@ -95,7 +95,7 @@ def train_variable_learning_rate_momentum(nntrainer, train, valid, learning_rate
 	"""
 	# train model
 	for epoch in range(num_epochs):
-		if verbose == 1:
+		if verbose >= 1:
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# change learning rate if on schedule
@@ -139,7 +139,7 @@ def train_anneal_batch_size(nntrainer, train, valid, batch_schedule,
 	"""
 	# train model
 	for epoch in range(num_epochs):
-		if verbose == 1:
+		if verbose >= 1:
 			sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# change learning rate if on schedule

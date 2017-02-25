@@ -11,18 +11,16 @@ __all__ = [
 ]
 
 
-def build_network(model_layers, output_shape, 
-								supervised=True, 
-								network=collections.OrderedDict(), 
-								placeholders=collections.OrderedDict()):
+def build_network(model_layers, output_shape, supervised=True):
 
 	# name generator
 	name_gen = NameGenerator()
+	network=collections.OrderedDict()
+	placeholders=collections.OrderedDict()
 
 	# loop to build each layer of network
 	last_layer = ''
 	for model_layer in model_layers:
-
 		layer = model_layer['layer']
 		name = name_gen.generate_name(layer)
 
