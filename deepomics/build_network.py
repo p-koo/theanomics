@@ -22,7 +22,10 @@ def build_network(model_layers, output_shape, supervised=True):
 	last_layer = ''
 	for model_layer in model_layers:
 		layer = model_layer['layer']
-		name = name_gen.generate_name(layer)
+		if 'name' in model_layer:
+			name = model_layer['name']
+		else:
+			name = name_gen.generate_name(layer)
 
 		if layer == "input":
 			shape = list(model_layer['shape'])
