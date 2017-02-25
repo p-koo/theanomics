@@ -13,13 +13,11 @@ __all__ = [
 class NeuralOptimizer:
 	"""Class to build a neural network and perform basic functions"""
 
-	def __init__(self, model_layers, input_vars, target_vars, optimization, filepath):
+	def __init__(self, model_layers, output_shape, optimization):
 		self.model_layers = model_layers
-		self.input_vars = input_vars
-		self.target_vars = target_vars
 		self.optimization = optimization
+		self.output_shape = output_shape
 		
-		self.filepath = filepath
 		self.optimal_loss = 1e20
 		self.models = []
 		
@@ -114,33 +112,27 @@ class NeuralOptimizer:
 					
 
 
-	def train_model(self, data, model_layers, optimization, num_epochs, batch_size, verbose, filepath):
+	def train_model(self, data, model_layers, optimization, num_epochs, batch_size, verbose):
 
 		# generate new network
-		model_layers = self.sample_network()
-		net = build_network(model_layers)
-
-		# generate new optimization
-		optimization = self.sample_optimization()
+		net, placeholders = build_network(model_layers, self.output_shape)
 
 		# build network
-		nnmodel = NeuralNet(net, self.input_vars)
+		nnmodel = NeuralNet(net, placeholders)
 
 		# build trainer
-		nntrainer = NeuralTrainer(nnmodel, self.target_vars, optimization, 
-									save='best', filepath=filepath)
+		nntrainer = NeuralTrainer(nnmodel, optimization, 
+									save=None, file_path=None)
 
 		# train network
-		train_minibatch(nntrainer, data['train'], 
+		train_minibatch(nntrainer, {'train': data['train']}, 
 								batch_size=batch_size, num_epochs=num_epochs, 
 								patience=[], verbose=verbose, shuffle=True)
 	
-		# load best model --> lowest cross-validation error
-		nntrainer.set_best_parameters()
-
 		# test model
-		loss = nntrainer.test_model(data['valid'], batch_size, "test", verbose=verbose)
-		return model_layers, optimization, loss
+		loss = nntrainer.test_model(data['valid'], "test", verbose=1)
+
+		return loss
 
 
 	def optimize(self, data, num_trials=30, batch_size=128, num_epochs=20, verbose=0):
@@ -151,9 +143,8 @@ class NeuralOptimizer:
 		model_layers, optimization = self.get_optimal_model()   
 		self.print_model(model_layers, optimization)
 		print('')
-		filepath = self.filepath + '_0'    
 		loss = self.train_model(data, model_layers, optimization, num_epochs=num_epochs, 
-									 batch_size=batch_size, verbose=verbose, filepath=filepath)
+									 batch_size=batch_size, verbose=verbose)
 		self.optimal_loss = loss
 		print("    loss = " + str(loss))
 		print('    took ' + str(time.time() - start_time) + ' seconds')
@@ -172,11 +163,11 @@ class NeuralOptimizer:
 			print('')
 
 			# train over a set number of epochs to compare models
-			filepath = self.filepath + '_' + str(trial_index+1)    
 			loss = self.train_model(data, new_model_layers, new_optimization, num_epochs=num_epochs, 
-										 batch_size=batch_size, verbose=verbose, filepath=filepath)
+										 batch_size=batch_size, verbose=verbose)
 
 			self.models.append([loss, new_model_layers, new_optimization])
+
 			print("Results:")
 			print("loss = " + str(loss))
 			print('took ' + str(time.time() - start_time) + ' seconds')

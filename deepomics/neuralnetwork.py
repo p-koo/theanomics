@@ -218,7 +218,7 @@ class NeuralTrainer:
 		self.learning_rate.set_value(new_learning_rate) 
 		
 
-	def train_step(self,  train, batch_size, verbose=1, shuffle=True):        
+	def train_step(self, train, batch_size, verbose=1, shuffle=True):        
 		"""Train a mini-batch --> single epoch"""
 
 		# set timer for epoch run
@@ -239,7 +239,8 @@ class NeuralTrainer:
 			value += self.train_metric(prediction, X[-1])
 			performance.add_loss(loss)
 			performance.progress_bar(i+1., num_batches, value/(i+1))
-		print("")
+		if verbose:
+			print("")
 		return performance.get_mean_loss()
 
 
@@ -281,19 +282,22 @@ class NeuralTrainer:
 		return performance.get_mean_loss(), prediction, label
 
 
-	def test_model(self, test, name, batch_size=100):
+	def test_model(self, test, name, batch_size=100, verbose=1):
 		"""perform a complete forward pass, store and print results"""
 
 		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
 		if name == "train":
 			self.train_monitor.update(test_loss, test_prediction, test_label)
-			self.train_monitor.print_results(name)
+			if verbose == 1:
+				self.train_monitor.print_results(name)
 		elif name == "valid":
 			self.valid_monitor.update(test_loss, test_prediction, test_label)
-			self.valid_monitor.print_results(name)
+			if verbose == 1:
+				self.valid_monitor.print_results(name)
 		elif name == "test":
 			self.test_monitor.update(test_loss, test_prediction, test_label)
-			self.test_monitor.print_results(name)
+			if verbose == 1:
+				self.test_monitor.print_results(name)
 		return test_loss
 	
 
