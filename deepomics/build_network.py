@@ -27,8 +27,10 @@ def build_network(model_layers, output_shape,
 		name = name_gen.generate_name(layer)
 
 		if layer == "input":
-			placeholders[name] = create_tensor(model_layer['shape'], name)
-			network[name] = layers.InputLayer(model_layer['shape'], input_var=placeholders[name])
+			shape = list(model_layer['shape'])
+			shape[0] = None
+			placeholders[name] = create_tensor(shape, name)
+			network[name] = layers.InputLayer(shape, input_var=placeholders[name])
 			last_layer = name
 
 		else:
@@ -38,8 +40,12 @@ def build_network(model_layers, output_shape,
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
+				if 'function' in model_layer:
+					function = model_layer['function']
+				else:
+					function = nonlinearities.rectify
 				network = conv1D_residual(network, last_layer, name, model_layer['filter_size'], 
-											nonlinearity=nonlinearities.rectify, dropout=dropout)
+											nonlinearity=function, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
@@ -48,8 +54,12 @@ def build_network(model_layers, output_shape,
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
+				if 'function' in model_layer:
+					function = model_layer['function']
+				else:
+					function = nonlinearities.rectify
 				network = conv2D_residual(network, last_layer, name, model_layer['filter_size'], 
-											nonlinearity=nonlinearities.rectify, dropout=dropout)
+											nonlinearity=function, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
@@ -58,8 +68,12 @@ def build_network(model_layers, output_shape,
 					dropout = model_layer['residual_dropout']
 				else:
 					dropout = None
+				if 'function' in model_layer:
+					function = model_layer['function']
+				else:
+					function = nonlinearities.rectify
 				network = dense_residual(network, last_layer, name, 
-											nonlinearity=nonlinearities.rectify, dropout=dropout)
+											nonlinearity=function, dropout=dropout)
 				new_layer = name+'_resid'
 				last_layer = new_layer
 
@@ -133,11 +147,11 @@ def build_network(model_layers, output_shape,
 			last_layer = new_layer
 
 		# global pooling layer
-		if 'global_pool' in model_layers:
+		if 'global_pool' in model_layer:
 			new_layer = name+'_global_pool'  # str(counter) + '_' + name+'_pool' 
-			if model_layers['global_pool'] == 'max':
+			if model_layer['global_pool'] == 'max':
 				pool_function = T.max
-			elif model_layers['global_pool'] == 'mean':
+			elif model_layer['global_pool'] == 'mean':
 				pool_function = T.mean
 			network[new_layer] = layers.GlobalPoolLayer(network[last_layer], pool_function=pool_function)
 			last_layer = new_layer
@@ -156,7 +170,7 @@ def build_network(model_layers, output_shape,
 			last_layer = new_layer
 
 	if supervised:
-		network['output'] = network[last_layer]
+		network['output'] = network.pop(last_layer)
 
 		# create targets tensor
 		placeholders['targets'] = create_tensor(output_shape, 'targets')
