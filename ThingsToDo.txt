@@ -1,7 +1,6 @@
-- better verbose
-- example explorer
-- modelchecker
-	- check activations of each layer
-	- 
-
+- stochastic depth
 - example gans
+- modelchecker
+	- check initializations -> activations of each layer
+- dropout backdrop + ensemble
+

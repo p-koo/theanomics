@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
 import os, sys, time
 import numpy as np
 from six.moves import cPickle
@@ -195,27 +194,37 @@ class NeuralNet:
 class NeuralTrainer:
 	"""Class to train a feed-forward neural network"""
 
-	def __init__(self, nnmodel, optimization, save='best', file_path='.'):
+	def __init__(self, nnmodel, optimization, save='best', file_path='.', verbose=1):
 		self.nnmodel = nnmodel
 		self.optimization = optimization    
 		self.save = save
 		self.file_path = file_path
 		self.objective = optimization["objective"]  
 		self.learning_rate = theano.shared(np.array(optimization['learning_rate'], dtype=theano.config.floatX))
+		if 'momentum' in optimization:
+			self.momentum = theano.shared(np.array(optimization['momentum'], dtype=theano.config.floatX))
+		else:
+			self.momentum = []
 
 		# build model 
-		print("compiling model")
+		#print("compiling model")
 		train_fun, test_fun = build_optimizer(nnmodel.network, nnmodel.placeholders, 
 											  optimization, self.learning_rate)
 		self.train_fun = train_fun
 		self.test_fun = test_fun
 
-		self.train_monitor = MonitorPerformance(name="train", objective=self.objective, verbose=1)
-		self.test_monitor = MonitorPerformance(name="test", objective=self.objective, verbose=1)
-		self.valid_monitor = MonitorPerformance(name="cross-validation", objective=self.objective, verbose=1)
+		self.train_monitor = MonitorPerformance(name="train", objective=self.objective, verbose=verbose)
+		self.test_monitor = MonitorPerformance(name="test", objective=self.objective, verbose=verbose)
+		self.valid_monitor = MonitorPerformance(name="cross-validation", objective=self.objective, verbose=verbose)
+
 
 	def set_learning_rate(self, new_learning_rate):
 		self.learning_rate.set_value(new_learning_rate) 
+
+		
+	def set_momentum(self, new_momentum):
+		if self.momentum:
+			self.momenum.set_value(momenum) 
 		
 
 	def train_step(self, train, batch_size, verbose=1, shuffle=True):        
@@ -239,6 +248,7 @@ class NeuralTrainer:
 			value += self.train_metric(prediction, X[-1])
 			performance.add_loss(loss)
 			performance.progress_bar(i+1., num_batches, value/(i+1))
+		self.add_loss(loss, 'train')
 		if verbose:
 			print("")
 		return performance.get_mean_loss()
@@ -257,10 +267,10 @@ class NeuralTrainer:
 			return np.mean((prediction - y)**2)
 
 
-	def test_step(self, test, batch_size, verbose=1):
+	def test_step(self, test, batch_size):
 		"""perform a complete forward pass with a test function"""
 
-		performance = MonitorPerformance('test',self.objective, verbose)
+		performance = MonitorPerformance('test', self.objective, verbose=0)
 
 		if isinstance(test, (list, tuple)):
 			num_data = test[0].shape[0]
@@ -288,15 +298,15 @@ class NeuralTrainer:
 		test_loss, test_prediction, test_label = self.test_step(test, batch_size)
 		if name == "train":
 			self.train_monitor.update(test_loss, test_prediction, test_label)
-			if verbose == 1:
+			if verbose >= 1:
 				self.train_monitor.print_results(name)
 		elif name == "valid":
 			self.valid_monitor.update(test_loss, test_prediction, test_label)
-			if verbose == 1:
+			if verbose >= 1:
 				self.valid_monitor.print_results(name)
 		elif name == "test":
 			self.test_monitor.update(test_loss, test_prediction, test_label)
-			if verbose == 1:
+			if verbose >= 1:
 				self.test_monitor.print_results(name)
 		return test_loss
 	
@@ -422,7 +432,7 @@ class MonitorPerformance():
 
 
 	def print_results(self, name):
-		if self.verbose == 1:
+		if self.verbose >= 1:
 			if name == 'test':
 				name += ' '
 
@@ -442,7 +452,7 @@ class MonitorPerformance():
 				
 
 	def progress_bar(self, epoch, num_batches, value, bar_length=30):
-		if self.verbose == 1:
+		if self.verbose >= 2:
 			remaining_time = (time.time()-self.start_time)*(num_batches-epoch)/epoch
 			percent = epoch/num_batches
 			progress = '='*int(round(percent*bar_length))
