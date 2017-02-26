@@ -143,8 +143,7 @@ class NeuralOptimizer:
 		nnmodel = NeuralNet(net, placeholders)
 
 		# build trainer
-		nntrainer = NeuralTrainer(nnmodel, optimization, 
-									save=None, file_path=None)
+		nntrainer = NeuralTrainer(nnmodel, optimization, save=None, file_path=None)
 
 		# train network
 		train_minibatch(nntrainer, {'train': data['train']}, 

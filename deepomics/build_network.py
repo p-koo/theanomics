@@ -79,10 +79,10 @@ def build_network(model_layers, output_shape, supervised=True):
 
 			elif layer == 'variational':
 				network['encode_mu'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'], 
-																		W=init.HeUniform(), b=init.Constant(0.0),
+																		W=init.GlorotUniform(), b=init.Constant(0.0),
 																		nonlinearity=nonlinearities.linear)
 				network['encode_logsigma'] = layers.DenseLayer(network[last_layer], num_units=model_layer['num_units'], 
-																		W=init.HeUniform(), b=init.Constant(0.0),
+																		W=init.GlorotUniform(), b=init.Constant(0.0),
 																		nonlinearity=nonlinearities.linear)
 				network['Z'] = VariationalSampleLayer(network['encode_mu'], network['encode_logsigma'])
 				last_layer = 'Z'
@@ -190,7 +190,7 @@ def single_layer(model_layer, network_last):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeUniform()
+			W = init.GlorotUniform()
 		network = layers.DenseLayer(network_last, num_units=model_layer['num_units'],
 											 W=W,
 											 b=None, 
@@ -201,7 +201,7 @@ def single_layer(model_layer, network_last):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeUniform()
+			W = init.GlorotUniform()
 		if 'pad' in model_layer:
 			pad = model_layer['pad']
 		else:
@@ -226,7 +226,7 @@ def single_layer(model_layer, network_last):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeUniform()
+			W = init.GlorotUniform()
 		if 'pad' in model_layer:
 			pad = model_layer['pad']
 		else:
@@ -255,7 +255,7 @@ def single_layer(model_layer, network_last):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeUniform()
+			W = init.GlorotUniform()
 		if 'pad' in model_layer:
 			pad = model_layer['pad']
 		else:
@@ -281,7 +281,7 @@ def single_layer(model_layer, network_last):
 		if 'W' in model_layer:
 			W = model_layer['W']
 		else:
-			W = init.HeUniform()
+			W = init.GlorotUniform()
 		if 'pad' in model_layer:
 			pad = model_layer['pad']
 		else:
@@ -460,7 +460,7 @@ def conv1D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearit
 	num_filters = shape[1]
 
 	net[name+'_1resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-					 W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+					 W=init.GlorotUniform(), b=None, nonlinearity=None, pad='same')
 	net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
 	net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
 
@@ -472,7 +472,7 @@ def conv1D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearit
 
 	# bottleneck residual layer
 	net[name+'_2resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-					 W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+					 W=init.GlorotUniform(), b=None, nonlinearity=None, pad='same')
 	net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
 
 	# combine input with residuals
@@ -493,7 +493,7 @@ def conv2D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearit
 	num_filters = shape[1]
 
 	net[name+'_1resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-					 W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+					 W=init.GlorotUniform(), b=None, nonlinearity=None, pad='same')
 	net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
 	net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
 
@@ -505,7 +505,7 @@ def conv2D_residual(net, last_layer, name, filter_size, nonlinearity=nonlinearit
 		
 	# bottleneck residual layer
 	net[name+'_2resid'] = layers.Conv2DLayer(net[last_layer], num_filters=num_filters, filter_size=filter_size, stride=(1, 1),    # 1000
-					 W=init.HeUniform(), b=None, nonlinearity=None, pad='same')
+					 W=init.GlorotUniform(), b=None, nonlinearity=None, pad='same')
 	net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
 
 	# combine input with residuals
@@ -527,7 +527,7 @@ def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify, d
 	num_filters = shape[1]
 
 	net[name+'_1resid'] = layers.DenseLayer(net[last_layer], num_units=num_units, 
-											W=init.HeUniform(), b=None, nonlinearity=None)
+											W=init.GlorotUniform(), b=None, nonlinearity=None)
 	net[name+'_1resid_norm'] = layers.BatchNormLayer(net[name+'_1resid'])
 	net[name+'_1resid_active'] = layers.NonlinearityLayer(net[name+'_1resid_norm'], nonlinearity=nonlinearity)
 
@@ -539,7 +539,7 @@ def dense_residual(net, last_layer, name, nonlinearity=nonlinearities.rectify, d
 		
 	# bottleneck residual layer
 	net[name+'_2resid'] = layers.DenseLayer(net[last_layer], num_units=num_units, 
-											 W=init.HeUniform(), b=None, nonlinearity=None)
+											 W=init.GlorotUniform(), b=None, nonlinearity=None)
 	net[name+'_2resid_norm'] = layers.BatchNormLayer(net[name+'_2resid'])
 
 	# combine input with residuals
