@@ -42,20 +42,38 @@ class NeuralOptimizer:
 					MAX = settings['bounds'][1]
 					if 'scale' not in settings.keys():
 						settings['scale'] = (MAX-MIN)/4
-					if 'multiples' not in settings.keys():
-						settings['multiples'] = 1
-					if ('offset' in settings.keys()) & (settings['multiples'] == 1):
-						offset = settings['offset']
+					if 'odd' in settings:
+						odd = settings['odd']
 					else:
+						odd = False
+					if odd:
+						if 'multiples' in settings:
+							multiples = settings['multiples']
+						else:
+							multiples = 2
+						offset = 1
+					else:
+						if 'multiples' in settings:
+							multiples = settings['multiples']
+						else:
+							multiples = 1
 						offset = 0
 
 					good_sample = False
 					while not good_sample:
-						sample = start + np.round(settings['scale'] * np.random.normal(0, 1))
-
-						if (sample >= MIN) & (sample <= MAX) & (np.mod(sample, settings['multiples']) == offset):
-							good_sample = True
-					layers[key] = int(sample)
+						if isinstance(start, int):
+							sample = start + np.round(settings['scale'] * np.random.normal(0, 1))
+							if (sample >= MIN) & (sample <= MAX) & (np.mod(sample, multiples) == offset):
+								good_sample = True
+						else:
+							sample = start + settings['scale'] * np.random.normal(0,1)
+							if (sample >= MIN) & (sample <= MAX):
+								good_sample = True
+							
+					if isinstance(start, int):
+						layers[key] = int(sample)
+					else:
+						layers[key] = sample
 			new_model_layers.append(layers)
 		
 		return new_model_layers
