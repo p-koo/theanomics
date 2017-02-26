@@ -178,26 +178,30 @@ class NeuralOptimizer:
 			print('trial ' + str(trial_index+1) + ' out of ' + str(num_trials))
 			print('---------------------------------------------------------')
 
-			# sample network and optimization
-			new_model_layers = self.sample_network()
-			new_optimization = self.sample_optimization()
-			self.print_model(new_model_layers, new_optimization)
-			print('')
+			try:
+				# sample network and optimization
+				new_model_layers = self.sample_network()
+				new_optimization = self.sample_optimization()
+				self.print_model(new_model_layers, new_optimization)
+				print('')
 
-			# train over a set number of epochs to compare models
-			loss = self.train_model(data, new_model_layers, new_optimization, num_epochs=num_epochs, 
-										 batch_size=batch_size, verbose=verbose)
+				# train over a set number of epochs to compare models
+				loss = self.train_model(data, new_model_layers, new_optimization, num_epochs=num_epochs, 
+											 batch_size=batch_size, verbose=verbose)
+	
+				self.models.append([loss, new_model_layers, new_optimization])
 
-			self.models.append([loss, new_model_layers, new_optimization])
+				print("Results:")
+				print("loss = " + str(loss))
+				print('took ' + str(time.time() - start_time) + ' seconds')
+				if loss < self.optimal_loss:
+					print("Lower loss found. Updating parameters")
+					self.optimal_loss = loss 
+					self.update_optimization(new_optimization)
+					self.update_model_layers(new_model_layers)
 
-			print("Results:")
-			print("loss = " + str(loss))
-			print('took ' + str(time.time() - start_time) + ' seconds')
-			if loss < self.optimal_loss:
-				print("Lower loss found. Updating parameters")
-				self.optimal_loss = loss 
-				self.update_optimization(new_optimization)
-				self.update_model_layers(new_model_layers)
+			except:
+				print('failed trial -- negative network size sampled')
 			print('')
 		print('---------------------------------------------------------')
 
