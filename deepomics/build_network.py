@@ -175,7 +175,7 @@ def build_network(model_layers, output_shape, supervised=True):
 		# create targets tensor
 		placeholders['targets'] = create_tensor(output_shape, 'targets')
 	else:
-		network['X'] = network[last_layer]
+		network['X'] = network.pop(last_layer)
 
 
 	return network, placeholders

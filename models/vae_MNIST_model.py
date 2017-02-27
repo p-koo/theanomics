@@ -50,22 +50,22 @@ def model(shape):
 			  }
 	layer2 = {'layer': 'dense', 
 			  'num_units': 512,  
-			  'activation': 'leaky_relu',
+			  'activation': 'relu',
 			  }
 	layer3 = {'layer': 'dense', 
-			  'num_units': 128,
-			  'activation': 'leaky_relu',
+			  'num_units': 64,
+			  'activation': 'relu',
 			  }
 	layer4 = {'layer': 'variational', 
-			  'num_units': 10,
+			  'num_units': 2,
 			  }
 	layer5 = {'layer': 'dense', 
-			  'num_units': 128,
-			  'activation': 'leaky_relu',
+			  'num_units': 64,
+			  'activation': 'relu',
 			  }
 	layer6 = {'layer': 'dense', 
 			  'num_units': 512,  
-			  'activation': 'leaky_relu',
+			  'activation': 'relu',
 			  }
 	layer7 = {'layer': 'dense', 
 			  'num_units': shape[1],

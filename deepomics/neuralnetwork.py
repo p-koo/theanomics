@@ -374,6 +374,61 @@ class NeuralTrainer:
 
 
 #----------------------------------------------------------------------------------------------------
+# Neural generator class
+#----------------------------------------------------------------------------------------------------
+
+class NeuralGenerator():
+	def __init__(self, network, binary=True):
+		self.network = network
+		self.binary = binary
+		self.z_var = T.dmatrix()
+		
+
+		layer_name = list(network.keys())[-2]
+		generated_x = layers.get_output(self.network[layer_name], {network['Z']: self.z_var}, deterministic=True)
+		self.gen_fn = theano.function([z_var], generated_x)
+
+
+	def generate_samples(self, z, batch_size=128):
+		def sigmoid(x):
+		    return 1 / (1 + np.exp(-x))
+
+		num_data = len(z)
+		if num_data > batch_size:
+			num_batches = num_data // batch_size
+			generated_samples = [np.empty(tuple(num_data, z.shape[1]))]
+			for i in range(num_batches):
+				index = range(i*batch_size, (i+1)*batch_size)    
+				generated_samples[index] = self.gen_fn(z[index])
+
+			# get the rest of the feature maps
+			index = range(num_batches*batch_size, num_data)    
+			if index:
+				generated_samples[index] = self.gen_fn(z[index])
+		else:
+			generated_samples = self.gen_fn(z)
+
+		if self.binary:
+			generated_samples = 1 / (1 + np.exp(-generated_samples))
+
+		return generated_samples
+
+
+	def generate_manifold(self, shape, num_grid, limits=[-2, 2]):
+
+		pos = np.linspace(-limits[0], limits[1], num_grid)
+
+		z = []
+		for i in range(num_grid):
+		    for j in range(num_grid):
+		        z.append(np.asarray([pos[i], pos[j]], dtype=theano.config.floatX))
+		z = np.vstack(z)
+		generated_samples = self.generate_samples(z)
+		
+		return generated_samples
+
+
+#----------------------------------------------------------------------------------------------------
 # Monitor performance metrics class
 #----------------------------------------------------------------------------------------------------
 
