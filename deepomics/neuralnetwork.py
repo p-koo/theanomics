@@ -19,7 +19,8 @@ import theano.tensor as T
 __all__ = [
 	"NeuralNet",
 	"NeuralTrainer",
-	"MonitorPerformance"
+	"MonitorPerformance",
+	"NeuralGenerator"
 ]
 
 #------------------------------------------------------------------------------------------
@@ -701,10 +702,10 @@ def build_updates(grad, params, optimization, learning_rate):
 # saliency and reconstruction
 
 class ModifiedBackprop(object):
-
+	# https://github.com/Lasagne/Recipes/blob/master/examples/Saliency%20Maps%20and%20Guided%20Backpropagation.ipynb
 	def __init__(self, nonlinearity):
 		self.nonlinearity = nonlinearity
-		self.ops = {}  # memoizes an OpFromGraph instance per tensor type
+		self.ops = {}  
 
 	def __call__(self, x):
 	   
@@ -721,9 +722,15 @@ class ModifiedBackprop(object):
 
 		return self.ops[tensor_type](x)
 
+
 class GuidedBackprop(ModifiedBackprop):
 	def grad(self, inputs, out_grads):
 		(inp,) = inputs
 		(grd,) = out_grads
 		dtype = inp.dtype
 		return (grd * (inp > 0).astype(dtype) * (grd > 0).astype(dtype),)
+
+
+
+
+
