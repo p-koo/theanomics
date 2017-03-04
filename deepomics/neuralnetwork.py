@@ -33,9 +33,8 @@ class NeuralNet:
 	def __init__(self, network, placeholders):
 		self.network = network
 		self.placeholders = placeholders
-		self.saliency = network.copy()
+		self.saliency = []
 		self.saliency_fn = []
-		self.last_layer = list(self.network)[-1]
 
 	def get_model_parameters(self, layer='output'):
 		"""return all the parameters of the network"""
@@ -76,7 +75,7 @@ class NeuralNet:
 	def inspect_layers(self):
 		"""print each layer type and parameters"""
 
-		all_layers = layers.get_all_layers(self.network[self.last_layer])
+		all_layers = layers.get_all_layers(self.network[list(self.network)[-1]])
 		print('----------------------------------------------------------------------------')
 		print('Network architecture:')
 		print('----------------------------------------------------------------------------')
@@ -141,9 +140,10 @@ class NeuralNet:
 		a network from the saliency_layer to the inputs"""
 
 		if saliency_layer not in self.network:
-			saliency_layer = self.last_layer
+			saliency_layer = list(self.network)[-1]
 
 		all_param_values = layers.get_all_param_values(self.network[saliency_layer])
+		self.saliency = self.network.copy()
 		layers.set_all_param_values(self.saliency['output'], all_param_values)
 
 		modified_relu = GuidedBackprop(nonlinearities.rectify) 

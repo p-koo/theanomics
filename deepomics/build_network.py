@@ -600,7 +600,7 @@ class DenoiseLayer(layers.MergeLayer):
 
 #--------------------------------------------------------------------------------------------------------------------
 # stochastic depth
-
+"""
 class StochasticDepthLayer(Layer):
     def __init__(self, incoming, p=0.5, rescale=True, shared_axes=(),
                  **kwargs):
@@ -638,7 +638,7 @@ class StochasticDepthLayer(Layer):
                 bcast = tuple(bool(s == 1) for s in mask_shape)
                 mask = T.patternbroadcast(mask, bcast)
             return input * mask
-
+"""
 #--------------------------------------------------------------------------------------------------------------------
 # decorrelation layer 
 

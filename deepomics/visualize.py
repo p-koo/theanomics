@@ -126,8 +126,8 @@ def plot_seq_logo(logo, nt_width=None, step_multiple=None):
 	if nt_width:
 		num_nt = logo.shape[1]/nt_width
 		if step_multiple:
-			step_size = num_nt/(step_multiple+1)
-			nt_range = range(step_size, step_size*step_multiple)              
+			step_size = int(num_nt/(step_multiple+1))
+			nt_range = range(step_size, int(step_size*step_multiple))              
 			plt.xticks([step_size*nt_width, step_size*2*nt_width, step_size*3*nt_width, step_size*4*nt_width], 
 						[str(step_size), str(step_size*2), str(step_size*3), str(step_size*4)])
 		else:
@@ -258,7 +258,7 @@ def subplot_grid(nrows, ncols):
 
 
 def load_alphabet(filepath, alphabet):
-	if (alphabet < 2) | (alphabet == 'dna') | (alphabet == 'rna'): # dna or rna
+	if (alphabet == 'dna') | (alphabet == 'rna'): # dna or rna
 		"""load images of nucleotide alphabet """
 		df = pd.read_table(os.path.join(filepath, 'A.txt'), header=None);
 		A_img = df.as_matrix()
@@ -272,7 +272,7 @@ def load_alphabet(filepath, alphabet):
 		G_img = df.as_matrix()
 		G_img = np.reshape(G_img, [76, 67, 3], order="F").astype(np.uint8)
 
-		if (alphabet == 1) | (alphabet == 'rna'): # RNA
+		if (alphabet == 'rna'): # RNA
 			df = pd.read_table(os.path.join(filepath, 'U.txt'), header=None);
 			T_img = df.as_matrix()
 			T_img = np.reshape(T_img, [74, 57, 3], order="F").astype(np.uint8)
@@ -282,7 +282,7 @@ def load_alphabet(filepath, alphabet):
 			T_img = np.reshape(T_img, [72, 59, 3], order="F").astype(np.uint8)
 		chars = [A_img, C_img, G_img, T_img]
 
-	elif (alphabet == 2) | (alphabet == 'structure'): # structural profile
+	elif (alphabet == 'structure'): # structural profile
 		df = pd.read_table(os.path.join(filepath, 'P.txt'), header=None);
 		P_img = df.as_matrix()
 		P_img =np. reshape(P_img, [64, 41, 3], order="F").astype(np.uint8)
@@ -300,7 +300,7 @@ def load_alphabet(filepath, alphabet):
 		M_img = np.reshape(M_img, [64, 42, 3], order="F").astype(np.uint8)
 		chars = [P_img, H_img, I_img, M_img, E_img]
 
-	elif (alphabet == 3) | (alphabet == 'pu'): # structural profile
+	elif (alphabet == 'pu'): # structural profile
 		df = pd.read_table(os.path.join(filepath, 'P.txt'), header=None);
 		P_img = df.as_matrix()
 		P_img =np. reshape(P_img, [64, 41, 3], order="F").astype(np.uint8)
