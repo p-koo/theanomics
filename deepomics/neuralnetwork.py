@@ -135,17 +135,15 @@ class NeuralNet:
 		return W
 
 
-	def compile_saliency_reconstruction(self, saliency_layer='output', deterministic=True):
+	def compile_saliency_reconstruction(self, saliency_layer=None, deterministic=True):
 		"""compile a saliency function to perform guided back-propagation through
 		a network from the saliency_layer to the inputs"""
 
-		if saliency_layer not in self.network:
-			saliency_layer = list(self.network)[-1]
 
-		all_param_values = layers.get_all_param_values(self.network[saliency_layer])
+		if not saliency_layer:
+			saliency_layer = list(self.network.keys())[-2]
+
 		self.saliency = self.network.copy()
-		layers.set_all_param_values(self.saliency['output'], all_param_values)
-
 		modified_relu = GuidedBackprop(nonlinearities.rectify) 
 		relu_layers = [layer for layer in layers.get_all_layers(self.saliency[saliency_layer])
 					   if getattr(layer, 'nonlinearity', None) is nonlinearities.rectify]
@@ -155,7 +153,6 @@ class NeuralNet:
 		output = layers.get_output(self.saliency[saliency_layer], deterministic=deterministic)
 		max_output = T.max(output, axis=1)
 		saliency = theano.grad(max_output.sum(), wrt=self.placeholders['inputs'])
-
 		self.saliency_fn = theano.function([self.placeholders['inputs']], saliency)
 
 

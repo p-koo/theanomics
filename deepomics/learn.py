@@ -5,10 +5,11 @@ from __future__ import print_function
 import sys
 import numpy as np
 import theano
-
+from .metrics import calculate_metrics
 
 __all__ = [
 	"train_minibatch",
+	"train_minibatch_all",
 	"train_variable_learning_rate",
 	"train_variable_learning_rate_momentum",
 	"train_anneal_batch_size",
@@ -43,6 +44,61 @@ def train_minibatch(nntrainer, data, batch_size=128, num_epochs=500,
 				break
 				
 	return nntrainer
+
+
+
+
+def train_minibatch_all(nntrainer, data, batch_size=128, num_epochs=500, 
+			patience=10, verbose=2, shuffle=True, objective='binary'):
+
+	# variables to store training and test metrics 
+	train_metrics = []
+	test_metrics = []
+
+	# calculate metrics for training set
+	train_loss, train_prediction, train_label = nntrainer.test_step(data['train'], batch_size=batch_size)
+	scores = calculate_metrics(train_label, train_prediction, objective=objective)
+	train_metrics.append(np.hstack([train_loss, scores[0]]))
+
+	# calculate metrics for test set
+	test_loss, test_prediction, test_label = nntrainer.test_step(data['test'], batch_size=batch_size)
+	scores = calculate_metrics(test_label, test_prediction, objective=objective)
+	test_metrics.append(np.hstack([test_loss, scores[0]]))
+
+	# train model and keep track of metrics 
+	min_loss = 1e6
+	for epoch in range(num_epochs):
+	    sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
+
+		# training epoch and calculate metrics for training set
+	    train_loss = nntrainer.train_step(data['train'], batch_size=batch_size, verbose=verbose, shuffle=shuffle)
+	    train_loss2, train_prediction, train_label = nntrainer.test_step(data['train'], batch_size=batch_size)
+	    scores = calculate_metrics(train_label, train_prediction, objective=objective)
+	    train_metrics.append(np.hstack([train_loss, scores[0]]))
+	    print("  train loss:\t\t{:.5f}".format(train_loss))
+
+		# calculate metrics for test set
+	    test_loss, test_prediction, test_label = nntrainer.test_step(data['test'], batch_size=batch_size)
+	    scores = calculate_metrics(test_label, test_prediction, objective=objective)
+	    test_metrics.append(np.hstack([test_loss, scores[0]]))
+	    print("  test loss:\t\t{:.5f}".format(test_loss))
+
+	    if test_loss < min_loss:
+	        min_loss = test_loss
+	        # save best model
+	        nntrainer.nnmodel.save_model_parameters(nntrainer.file_path+'_best.pickle')        
+
+    # save overfit model
+	nntrainer.nnmodel.save_model_parameters(nntrainer.file_path+'_last.pickle')
+
+	# store metrics
+	train_metrics= np.vstack(train_metrics)
+	test_metrics = np.vstack(test_metrics)
+
+	return nntrainer, train_metrics, test_metrics
+
+	
+
 
 
 def train_variable_learning_rate(nntrainer, train, valid, learning_rate_schedule, 
