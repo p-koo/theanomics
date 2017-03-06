@@ -54,11 +54,17 @@ def train_minibatch_all(nntrainer, data, batch_size=128, num_epochs=500,
 	# variables to store training and test metrics 
 	train_metrics = []
 	test_metrics = []
+	valid_metrics = []
 
 	# calculate metrics for training set
 	train_loss, train_prediction, train_label = nntrainer.test_step(data['train'], batch_size=batch_size)
 	scores = calculate_metrics(train_label, train_prediction, objective=objective)
 	train_metrics.append(np.hstack([train_loss, scores[0]]))
+
+	# calculate metrics for cross-validation set
+	valid_loss, valid_prediction, valid_label = nntrainer.test_step(data['valid'], batch_size=batch_size)
+	scores = calculate_metrics(valid_label, valid_prediction, objective=objective)
+	valid_metrics.append(np.hstack([valid_loss, scores[0]]))
 
 	# calculate metrics for test set
 	test_loss, test_prediction, test_label = nntrainer.test_step(data['test'], batch_size=batch_size)
@@ -68,34 +74,42 @@ def train_minibatch_all(nntrainer, data, batch_size=128, num_epochs=500,
 	# train model and keep track of metrics 
 	min_loss = 1e6
 	for epoch in range(num_epochs):
-	    sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
+		sys.stdout.write("\rEpoch %d out of %d \n"%(epoch+1, num_epochs))
 
 		# training epoch and calculate metrics for training set
-	    train_loss = nntrainer.train_step(data['train'], batch_size=batch_size, verbose=verbose, shuffle=shuffle)
-	    train_loss2, train_prediction, train_label = nntrainer.test_step(data['train'], batch_size=batch_size)
-	    scores = calculate_metrics(train_label, train_prediction, objective=objective)
-	    train_metrics.append(np.hstack([train_loss, scores[0]]))
-	    print("  train loss:\t\t{:.5f}".format(train_loss))
+		train_loss = nntrainer.train_step(data['train'], batch_size=batch_size, verbose=verbose, shuffle=shuffle)
+		train_loss2, train_prediction, train_label = nntrainer.test_step(data['train'], batch_size=batch_size)
+		scores = calculate_metrics(train_label, train_prediction, objective=objective)
+		train_metrics.append(np.hstack([train_loss, scores[0]]))
+		print("  train loss:\t\t{:.5f}".format(train_loss))
+
+		# calculate metrics for cross-validation set
+		valid_loss, valid_prediction, valid_label = nntrainer.test_step(data['valid'], batch_size=batch_size)
+		scores = calculate_metrics(valid_label, valid_prediction, objective=objective)
+		valid_metrics.append(np.hstack([valid_loss, scores[0]]))
+		print("  valid loss:\t\t{:.5f}".format(valid_loss))
 
 		# calculate metrics for test set
-	    test_loss, test_prediction, test_label = nntrainer.test_step(data['test'], batch_size=batch_size)
-	    scores = calculate_metrics(test_label, test_prediction, objective=objective)
-	    test_metrics.append(np.hstack([test_loss, scores[0]]))
-	    print("  test loss:\t\t{:.5f}".format(test_loss))
+		test_loss, test_prediction, test_label = nntrainer.test_step(data['test'], batch_size=batch_size)
+		scores = calculate_metrics(test_label, test_prediction, objective=objective)
+		test_metrics.append(np.hstack([test_loss, scores[0]]))
+		print("  test loss:\t\t{:.5f}".format(test_loss))
 
-	    if test_loss < min_loss:
-	        min_loss = test_loss
-	        # save best model
-	        nntrainer.nnmodel.save_model_parameters(nntrainer.file_path+'_best.pickle')        
+		if valid_loss < min_loss:
+			min_loss = valid_loss
+			# save best model
+			nntrainer.nnmodel.save_model_parameters(nntrainer.file_path+'_best.pickle')        
+			nntrainer.test_model(data['valid'], "valid", batch_size);
 
-    # save overfit model
 	nntrainer.nnmodel.save_model_parameters(nntrainer.file_path+'_last.pickle')
 
 	# store metrics
 	train_metrics= np.vstack(train_metrics)
+	valid_metrics = np.vstack(valid_metrics)
 	test_metrics = np.vstack(test_metrics)
+	results = [train_metrics, valid_metrics, test_metrics]
 
-	return nntrainer, train_metrics, test_metrics
+	return nntrainer, results
 
 	
 
