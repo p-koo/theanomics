@@ -7,9 +7,9 @@ import numpy as np
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 
-sys.path.append('/Users/juliankimura/Desktop/deepomics')
-import deepomics.neuralnetwork as nn
-from deepomics import learn, utils
+sys.path.append('..')
+import theanomics.neuralnetwork as nn
+from theanomics import learn, utils
 from models import vae_model
 
 np.random.seed(247)   # for reproducibility

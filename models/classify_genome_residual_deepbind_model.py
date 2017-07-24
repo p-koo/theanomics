@@ -2,7 +2,7 @@ import sys
 import collections
 
 sys.path.append('..')
-from deepomics.build_network import build_network 
+from theanomics.build_network import build_network 
 
 def model(input_shape, output_shape):
 

@@ -5,7 +5,7 @@ from __future__ import print_function
 
 import os, sys
 import numpy as np
-sys.path.append('/Users/juliankimura/Desktop/deepomics')
+sys.path.append('..')
 import deepomics.neuralnetwork as nn
 from deepomics import learn, utils
 from models import standard_model, all_conv_model

@@ -44,32 +44,33 @@ class NeuralNet:
 
 	def set_model_parameters(self, all_param_values, layer='output'):
 		"""initialize network with all_param_values"""
-		if layer not in self.network:
-			layer = self.last_layer
-		layers.set_all_param_values(self.network[layer], all_param_values)
+		if layer not in self.network.keys():
+			print(layer+ ': not found in network')
+		else:
+			layers.set_all_param_values(self.network[layer], all_param_values)
 
 
 	def save_model_parameters(self, file_path, layer='output'):
 		"""save model parameters to a file"""
-		if layer not in self.network:
-			layer = self.last_layer
-
-		print("saving model parameters to: " + file_path)
-		all_param_values = self.get_model_parameters(layer)
-		with open(file_path, 'wb') as f:
-			cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
+		if layer not in self.network.keys():
+			print(layer+ ': not found in network')
+		else:
+			print("saving model parameters to: " + file_path)
+			all_param_values = self.get_model_parameters(layer)
+			with open(file_path, 'wb') as f:
+				cPickle.dump(all_param_values, f, protocol=cPickle.HIGHEST_PROTOCOL)
 	
 
 	def load_model_parameters(self, file_path, layer='output'):
 		"""load model parametes from a file"""
-		if layer not in self.network:
-			layer = self.last_layer
-
-		print("loading model parameters from: " + file_path)
-		all_param_values = self.get_model_parameters(layer)
-		with open(file_path, 'rb') as f:
-			all_param_values = cPickle.load(f)
-		self.set_model_parameters(all_param_values, layer)
+		if layer not in self.network.keys():
+			print(layer+ ': not found in network')
+		else:
+			print("loading model parameters from: " + file_path)
+			all_param_values = self.get_model_parameters(layer)
+			with open(file_path, 'rb') as f:
+				all_param_values = cPickle.load(f)
+			self.set_model_parameters(all_param_values, layer)
 
 
 	def inspect_layers(self):

@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from tfomics import utils, init
+from theanomics import utils, init
 import tensorflow as tf
 
 
@@ -38,7 +38,7 @@ def model(input_shape, output_shape):
                 'activation': 'sigmoid',
                 }
 
-    #from tfomics import build_network
+    #from theanomics import build_network
     model_layers = [layer1, layer2, layer3, layer4, layer5]
 
     # optimization parameters

@@ -1,7 +1,0 @@
-- stochastic depth
-	- https://github.com/christopher-beckham/Recipes/blob/master/examples/stochastic_depth_layers.ipynb
-- example gans
-- modelchecker
-	- check initializations -> activations of each layer
-- dropout backdrop + ensemble
-
